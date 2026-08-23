@@ -70,6 +70,7 @@ export function BibleReader() {
   const [data, setData] = useState<PassageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [errorReason, setErrorReason] = useState<string | undefined>(undefined);
   const [nonce, setNonce] = useState(0);
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
 
@@ -111,17 +112,22 @@ export function BibleReader() {
 
     fetch(`/api/passage?${params.toString()}`, { signal: ctrl.signal })
       .then((r) => r.json())
-      .then((json: { passage: PassageData | null }) => {
+      .then((json: { passage: PassageData | null; reason?: string }) => {
         if (cancelled) return;
         if (!json?.passage?.verses?.length) {
           setData(null);
           setError(true);
+          setErrorReason(json?.reason);
         } else {
           setData(json.passage);
+          setError(false);
         }
       })
       .catch((err) => {
-        if (!cancelled && err?.name !== "AbortError") setError(true);
+        if (!cancelled && err?.name !== "AbortError") {
+          setError(true);
+          setErrorReason(undefined);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -345,7 +351,17 @@ export function BibleReader() {
 
         {!loading && error && (
           <div className="py-8 text-center">
-            <p className="mb-3 text-sm text-red-300/90">{L.error}</p>
+            <p className="mb-3 text-sm text-red-300/90">
+              {errorReason === "missing-key"
+                ? lang === "es"
+                  ? "El servidor no tiene API_BIBLE_KEY configurada."
+                  : "Server is missing API_BIBLE_KEY."
+                : errorReason === "missing-bible-id"
+                  ? lang === "es"
+                    ? "Falta configurar PUBLIC_API_BIBLE_BID_ES con el ID de tu Biblia en español (panel de api.bible)."
+                    : "PUBLIC_API_BIBLE_BID_EN is not configured with a Bible ID."
+                  : L.error}
+            </p>
             <button
               type="button"
               onClick={() => setNonce((n) => n + 1)}

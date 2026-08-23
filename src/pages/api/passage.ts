@@ -140,7 +140,7 @@ async function fetchFromApiBible(
   if (!res || !res.ok) return null;
 
   const data = (await res.json()) as {
-    data?: { id?: string; content?: string; reference?: unknown };
+    data?: { id?: string; content?: string } | Array<{ id?: string; content?: string }>;
   };
   const item = Array.isArray(data?.data)
     ? data.data.find((p) => typeof p?.content === "string")
@@ -157,6 +157,39 @@ async function fetchFromApiBible(
     passage: { label, intro, verses },
     source: "api-bible",
   };
+}
+
+function apiBibleStatus(
+  lang: "es" | "en"
+): { status: string; detail: string } {
+  const key = Boolean(import.meta.env.API_BIBLE_KEY);
+  const bid =
+    lang === "es"
+      ? Boolean(import.meta.env.PUBLIC_API_BIBLE_BID_ES)
+      : Boolean(import.meta.env.PUBLIC_API_BIBLE_BID_EN);
+  if (!key && !bid) return { status: "missing-key", detail: "API_BIBLE_KEY y BID ausentes" };
+  if (!key) return { status: "missing-key", detail: "API_BIBLE_KEY ausente" };
+  if (!bid) return { status: "missing-bible-id", detail: `PUBLIC_API_BIBLE_BID_${lang.toUpperCase()} ausente` };
+  return { status: "ok", detail: "" };
+}
+
+async function listApiBibles(
+  language: "spa" | "eng"
+): Promise<Array<{ id: string; name: string; abbreviation?: string }> | null> {
+  const key = import.meta.env.API_BIBLE_KEY;
+  if (!key) return null;
+  const base = (
+    import.meta.env.PUBLIC_API_BIBLE_BASE ?? DEFAULT_BASE
+  ).replace(/\/$/, "");
+  const url = `${base}/bibles?language=${language}&format=text`;
+  const res = await fetchWithTimeout(url, {
+    headers: { "api-key": key, accept: "application/json" },
+  });
+  if (!res || !res.ok) return null;
+  const data = (await res.json()) as {
+    data?: Array<{ id: string; name: string; abbreviation?: string }>;
+  };
+  return data?.data ?? null;
 }
 
 async function fetchFromBibleApi(
@@ -232,6 +265,22 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
     });
   }
 
+  if (url.searchParams.get("debug") === "bibles") {
+    const spa = await listApiBibles("spa");
+    const eng = await listApiBibles("eng");
+    return new Response(
+      JSON.stringify({
+        keyPresent: Boolean(import.meta.env.API_BIBLE_KEY),
+        bidEs: Boolean(import.meta.env.PUBLIC_API_BIBLE_BID_ES),
+        bidEn: Boolean(import.meta.env.PUBLIC_API_BIBLE_BID_EN),
+        base: import.meta.env.PUBLIC_API_BIBLE_BASE ?? DEFAULT_BASE,
+        spanish: spa?.slice(0, 20) ?? null,
+        english: eng?.slice(0, 20) ?? null,
+      }),
+      { status: 200, headers: jsonHeaders({ "cache-control": "no-store" }) }
+    );
+  }
+
   const lang = url.searchParams.get("lang") === "en" ? "en" : "es";
   const chapterParam = Number(url.searchParams.get("chapter"));
   const verseParam = Number(url.searchParams.get("verse"));
@@ -289,10 +338,16 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   }
 
   if (!payload || !payload.passage) {
-    return new Response(JSON.stringify({ passage: null, reason: "unavailable" }), {
-      status: 503,
-      headers: jsonHeaders({ ...rlHdrs, "cache-control": "no-store" }),
-    });
+    const diag = apiBibleStatus(lang);
+    const reason =
+      diag.status !== "ok" ? diag.status : "upstream-error";
+    return new Response(
+      JSON.stringify({ passage: null, reason, detail: diag.detail }),
+      {
+        status: reason === "upstream-error" ? 502 : 503,
+        headers: jsonHeaders({ ...rlHdrs, "cache-control": "no-store" }),
+      }
+    );
   }
 
   const labelBook = lang === "es" ? book.es : book.en;
