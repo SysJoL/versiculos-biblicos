@@ -21,7 +21,7 @@ const TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 80;
 const FORMAT_VERSION =
-  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "4";
+  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "5";
 
 type VerseSegment = { n: number; text: string; heading?: string };
 
@@ -389,8 +389,8 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   let payload: PassagePayload | null = null;
 
   if (lang === "en") {
-    payload = await fetchFromBibleApi(book.en, chapter);
-    if (!payload) payload = await fetchFromApiBible("en", `${book.usfm}.${chapter}`);
+    payload = await fetchFromApiBible("en", `${book.usfm}.${chapter}`);
+    if (!payload) payload = await fetchFromBibleApi(book.en, chapter);
   } else {
     const fqi =
       verse !== undefined
