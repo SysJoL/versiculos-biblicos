@@ -127,10 +127,10 @@ async function fetchWithTimeout(
   }
 }
 
-async function fetchFromApiBible(
+async function fetchRawApiBible(
   lang: "es" | "en",
   fqi: string
-): Promise<PassagePayload | null> {
+): Promise<string | null> {
   const key = import.meta.env.API_BIBLE_KEY;
   const bid =
     lang === "es"
@@ -155,9 +155,17 @@ async function fetchFromApiBible(
     : data?.data && typeof data.data.content === "string"
       ? data.data
       : null;
-  if (!item?.content) return null;
+  return item?.content ?? null;
+}
 
-  const { intro, verses } = htmlToVerses(item.content);
+async function fetchFromApiBible(
+  lang: "es" | "en",
+  fqi: string
+): Promise<PassagePayload | null> {
+  const raw = await fetchRawApiBible(lang, fqi);
+  if (!raw) return null;
+
+  const { intro, verses } = htmlToVerses(raw);
   if (verses.length === 0) return null;
   const [main] = fqi.split("-");
   const label = main ?? fqi;
@@ -282,6 +290,32 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
         base: import.meta.env.PUBLIC_API_BIBLE_BASE ?? DEFAULT_BASE,
         spanish: spa?.slice(0, 20) ?? null,
         english: eng?.slice(0, 20) ?? null,
+      }),
+      { status: 200, headers: jsonHeaders({ "cache-control": "no-store" }) }
+    );
+  }
+
+  if (url.searchParams.get("debug") === "raw") {
+    const langD = url.searchParams.get("lang") === "en" ? "en" : "es";
+    const bRaw = resolveBook(url.searchParams.get("book"));
+    const cRaw = Number(url.searchParams.get("chapter")) || 1;
+    if (!bRaw) {
+      return new Response(JSON.stringify({ error: "bad-book" }), {
+        status: 400,
+        headers: jsonHeaders({ "cache-control": "no-store" }),
+      });
+    }
+    const raw = await fetchRawApiBible(langD, `${bRaw.usfm}.${cRaw}`);
+    return new Response(
+      JSON.stringify({
+        lang: langD,
+        bid: langD === "es"
+          ? import.meta.env.PUBLIC_API_BIBLE_BID_ES
+          : import.meta.env.PUBLIC_API_BIBLE_BID_EN,
+        base: import.meta.env.PUBLIC_API_BIBLE_BASE ?? DEFAULT_BASE,
+        len: raw?.length ?? 0,
+        head: raw ? raw.slice(0, 3000) : null,
+        tail: raw && raw.length > 3000 ? raw.slice(-800) : null,
       }),
       { status: 200, headers: jsonHeaders({ "cache-control": "no-store" }) }
     );
