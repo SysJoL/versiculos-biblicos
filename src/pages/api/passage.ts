@@ -21,7 +21,7 @@ const TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 80;
 const FORMAT_VERSION =
-  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "2";
+  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "3";
 
 type VerseSegment = { n: number; text: string };
 
@@ -77,33 +77,52 @@ function stripTags(value: string): string {
     .trim();
 }
 
+const SECTION_HEADING_RE =
+  /<p[^>]*class="(?:s|ms|mr)"[^>]*>[\s\S]*?<\/p>/gi;
+
 const VERSE_MARKUP_RE =
-  /<sup[^>]*>([\s\S]*?)<\/sup>|<span[^>]*class="[^"]*v-num[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
+  /<sup[^>]*>([\s\S]*?)<\/sup>|<span[^>]*class="[^"]*v-num[^"]*"[^>]*>([\s\S]*?)<\/span>|<span[^>]*\bdata-number="(\d+)"[^>]*>([\s\S]*?)<\/span>/gi;
 
 function htmlToVerses(html: string): { intro: string; verses: VerseSegment[] } {
+  const headings: string[] = [];
+  const body = html.replace(SECTION_HEADING_RE, (match) => {
+    const text = stripTags(match);
+    if (text) headings.push(text);
+    return " ";
+  });
+
   const markers: Array<{ start: number; end: number; n: number }> = [];
   VERSE_MARKUP_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = VERSE_MARKUP_RE.exec(html)) !== null) {
-    const raw = m[1] ?? m[2] ?? "";
-    const digits = stripTags(raw).replace(/\D/g, "");
+  while ((m = VERSE_MARKUP_RE.exec(body)) !== null) {
+    const explicit = m[3];
+    const raw = m[1] ?? m[2] ?? m[4] ?? "";
+    const digits = explicit ?? stripTags(raw).replace(/\D/g, "");
     const n = parseInt(digits, 10);
     if (!Number.isFinite(n) || n <= 0) continue;
     markers.push({ start: m.index, end: m.index + m[0].length, n });
   }
 
   if (markers.length === 0) {
-    const text = stripTags(html);
-    return { intro: "", verses: text ? [{ n: 1, text }] : [] };
+    const text = stripTags(body);
+    if (!text) {
+      return { intro: headings.join(" · "), verses: [] };
+    }
+    if (headings.length === 0) {
+      return { intro: "", verses: [{ n: 1, text }] };
+    }
+    return { intro: headings.join(" · "), verses: [{ n: 1, text }] };
   }
 
-  const intro = stripTags(html.slice(0, markers[0].start));
+  const preText = stripTags(body.slice(0, markers[0].start));
+  const introParts = [...(preText ? [preText] : []), ...headings];
+  const intro = introParts.join(" · ");
   const verses: VerseSegment[] = [];
 
   for (let i = 0; i < markers.length; i++) {
     const { start, end, n } = markers[i];
-    const nextStart = i + 1 < markers.length ? markers[i + 1].start : html.length;
-    const text = stripTags(html.slice(end, nextStart));
+    const nextStart = i + 1 < markers.length ? markers[i + 1].start : body.length;
+    const text = stripTags(body.slice(end, nextStart));
     if (!text) continue;
     if (verses.length > 0 && verses[verses.length - 1].n === n) continue;
     verses.push({ n, text });

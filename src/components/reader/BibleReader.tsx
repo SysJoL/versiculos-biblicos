@@ -100,7 +100,7 @@ export function BibleReader() {
       lang,
       book: book.usfm,
       chapter: String(chapter),
-      v: "2",
+      v: "3",
     });
 
     fetch(`/api/passage?${params.toString()}`, { signal: ctrl.signal })
