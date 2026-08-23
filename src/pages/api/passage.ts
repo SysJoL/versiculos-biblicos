@@ -20,6 +20,8 @@ const BIBLE_API_BASE = (
 const TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 80;
+const FORMAT_VERSION =
+  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "2";
 
 type VerseSegment = { n: number; text: string };
 
@@ -315,13 +317,14 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   if (verse !== undefined && verse > 500) verse = undefined;
   if (verseEnd !== undefined && (!verse || verseEnd < verse)) verseEnd = undefined;
 
-  const cacheKey = `${lang}:${book.usfm}.${chapter}${verse ? `.${verse}${verseEnd ? `-${verseEnd}` : ""}` : ""}`;
+  const cacheKey = `${FORMAT_VERSION}:${lang}:${book.usfm}.${chapter}${verse ? `.${verse}${verseEnd ? `-${verseEnd}` : ""}` : ""}`;
   const cached = cacheGet(cacheKey);
   if (cached) {
     return new Response(JSON.stringify(cached), {
       status: 200,
       headers: jsonHeaders({
-        "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+        "cache-control":
+          "public, max-age=300, s-maxage=21600, stale-while-revalidate=604800",
       }),
     });
   }
@@ -365,7 +368,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
     status: 200,
     headers: jsonHeaders({
       "cache-control":
-        "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+        "public, max-age=300, s-maxage=21600, stale-while-revalidate=604800",
     }),
   });
 };
