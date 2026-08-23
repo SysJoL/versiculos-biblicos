@@ -7,14 +7,11 @@ import {
   downloadVerseCaptureById,
 } from "./DownloadButton";
 import { showToast } from "@/lib/ui/toast";
+import {
+  getStoredSanctuary,
+  type SanctuaryTheme,
+} from "@/lib/ui/sanctuary";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-
-type SanctuaryTheme = "celestial" | "nature";
-
-function readSanctuaryTheme(): SanctuaryTheme {
-  if (typeof window === "undefined") return "celestial";
-  return localStorage.getItem("refugio-sanctuary") === "nature" ? "nature" : "celestial";
-}
 
 type Props = {
   captureElementId: string;
@@ -47,7 +44,7 @@ export function VerseActionsMenu({
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
 
   useEffect(() => {
-    setSanctuary(readSanctuaryTheme());
+    setSanctuary(getStoredSanctuary());
     const handler = (e: Event) => {
       const theme = (e as CustomEvent<{ theme: SanctuaryTheme }>).detail?.theme;
       if (theme === "celestial" || theme === "nature") setSanctuary(theme);
