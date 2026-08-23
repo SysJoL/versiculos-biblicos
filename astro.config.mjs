@@ -2,17 +2,26 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "astro/config";
 import node from "@astrojs/node";
+import vercel from "@astrojs/vercel/serverless";
 import react from "@astrojs/react";
 import tailwind from "@astrojs/tailwind";
 import AstroPWA from "@vite-pwa/astro";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const isVercel = Boolean(process.env.VERCEL);
+
 export default defineConfig({
   output: "server",
-  adapter: node({
-    mode: "standalone",
-  }),
+  adapter: isVercel
+    ? vercel()
+    : node({
+        mode: "standalone",
+      }),
+  // @vite-pwa/astro lee build.client antes de que el adaptador de Vercel lo
+  // redirija a .vercel/output/static; se fija aquí para que el service worker
+  // y el precache apunten al directorio estático que Vercel sirve.
+  ...(isVercel ? { build: { client: "./.vercel/output/static" } } : {}),
   /** Barra flotante de Astro solo en desarrollo; desactivada si no la usas. */
   devToolbar: { enabled: false },
   integrations: [
