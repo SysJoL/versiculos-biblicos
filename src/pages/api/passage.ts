@@ -245,10 +245,8 @@ function normalizeBookLabel(enName: string): string {
 function resolveBook(raw: string | null): CatalogBook | null {
   if (!raw) return null;
   const trimmed = raw.trim();
-  if (/^[0-9]?[A-Za-z]{2}$/.test(trimmed)) {
-    const byUsfm = findCatalogBook(trimmed);
-    if (byUsfm) return byUsfm;
-  }
+  const byUsfm = findCatalogBook(trimmed);
+  if (byUsfm) return byUsfm;
   const code = findBookByName(trimmed);
   if (!code) return null;
   return BOOKS.find((b) => b.usfm === code) ?? null;
