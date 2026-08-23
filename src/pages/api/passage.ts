@@ -75,29 +75,35 @@ function stripTags(value: string): string {
     .trim();
 }
 
-function htmlToVerses(html: string): { intro: string; verses: VerseSegment[] } {
-  const supRe = /<sup[^>]*>/i;
-  const closeRe = /<\/sup>/i;
-  const firstIdx = html.search(supRe);
+const VERSE_MARKUP_RE =
+  /<sup[^>]*>([\s\S]*?)<\/sup>|<span[^>]*class="[^"]*v-num[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
 
-  if (firstIdx < 0) {
+function htmlToVerses(html: string): { intro: string; verses: VerseSegment[] } {
+  const markers: Array<{ start: number; end: number; n: number }> = [];
+  VERSE_MARKUP_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = VERSE_MARKUP_RE.exec(html)) !== null) {
+    const raw = m[1] ?? m[2] ?? "";
+    const digits = stripTags(raw).replace(/\D/g, "");
+    const n = parseInt(digits, 10);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    markers.push({ start: m.index, end: m.index + m[0].length, n });
+  }
+
+  if (markers.length === 0) {
     const text = stripTags(html);
     return { intro: "", verses: text ? [{ n: 1, text }] : [] };
   }
 
-  const intro = stripTags(html.slice(0, firstIdx));
-  const body = html.slice(firstIdx);
-  const chunks = body.split(/<sup[^>]*>/i).slice(1);
+  const intro = stripTags(html.slice(0, markers[0].start));
   const verses: VerseSegment[] = [];
 
-  for (const chunk of chunks) {
-    const closeMatch = closeRe.exec(chunk);
-    if (!closeMatch) continue;
-    const rawNum = chunk.slice(0, closeMatch.index).trim();
-    const n = parseInt(rawNum.replace(/\D/g, ""), 10);
-    const rest = chunk.slice(closeMatch.index + closeMatch[0].length);
-    const text = stripTags(rest);
-    if (!Number.isFinite(n) || !text) continue;
+  for (let i = 0; i < markers.length; i++) {
+    const { start, end, n } = markers[i];
+    const nextStart = i + 1 < markers.length ? markers[i + 1].start : html.length;
+    const text = stripTags(html.slice(end, nextStart));
+    if (!text) continue;
+    if (verses.length > 0 && verses[verses.length - 1].n === n) continue;
     verses.push({ n, text });
   }
 
