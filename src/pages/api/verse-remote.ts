@@ -1,4 +1,4 @@
-import type { APIRoute } from "astro";
+﻿import type { APIRoute } from "astro";
 import type { Lang, Mood } from "@/lib/domain/types";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/server/rateLimiter";
 
@@ -33,136 +33,11 @@ const KEYWORDS: Record<Lang, Record<Mood, string[]>> = {
   },
 };
 
+import { parseRefToUsfm } from "@/lib/domain/refParser";
+
 type ApiBibleCandidate = {
   ref: string;
   text: string;
-};
-
-const BOOK_CODES: Record<string, string> = {
-  genesis: "GEN",
-  exodo: "EXO",
-  exodus: "EXO",
-  levitico: "LEV",
-  leviticus: "LEV",
-  numeros: "NUM",
-  numbers: "NUM",
-  deuteronomio: "DEU",
-  deuteronomy: "DEU",
-  josue: "JOS",
-  joshua: "JOS",
-  jueces: "JDG",
-  judges: "JDG",
-  rut: "RUT",
-  ruth: "RUT",
-  "1 samuel": "1SA",
-  "2 samuel": "2SA",
-  "1 reyes": "1KI",
-  "2 reyes": "2KI",
-  "1 kings": "1KI",
-  "2 kings": "2KI",
-  "1 cronicas": "1CH",
-  "2 cronicas": "2CH",
-  "1 chronicles": "1CH",
-  "2 chronicles": "2CH",
-  esdras: "EZR",
-  ezra: "EZR",
-  nehemias: "NEH",
-  nehemiah: "NEH",
-  ester: "EST",
-  esther: "EST",
-  job: "JOB",
-  salmo: "PSA",
-  salmos: "PSA",
-  psalm: "PSA",
-  psalms: "PSA",
-  proverbios: "PRO",
-  proverbs: "PRO",
-  eclesiastes: "ECC",
-  ecclesiastes: "ECC",
-  cantares: "SNG",
-  "song of solomon": "SNG",
-  isaias: "ISA",
-  isaiah: "ISA",
-  jeremias: "JER",
-  jeremiah: "JER",
-  lamentaciones: "LAM",
-  lamentations: "LAM",
-  ezequiel: "EZK",
-  ezekiel: "EZK",
-  daniel: "DAN",
-  oseas: "HOS",
-  hosea: "HOS",
-  joel: "JOL",
-  amos: "AMO",
-  jonas: "JON",
-  jonah: "JON",
-  miqueas: "MIC",
-  micah: "MIC",
-  nahum: "NAM",
-  habacuc: "HAB",
-  habakkuk: "HAB",
-  sofonias: "ZEP",
-  zephaniah: "ZEP",
-  hageo: "HAG",
-  haggai: "HAG",
-  zacarias: "ZEC",
-  zechariah: "ZEC",
-  malaquias: "MAL",
-  malachi: "MAL",
-  mateo: "MAT",
-  matthew: "MAT",
-  marcos: "MRK",
-  mark: "MRK",
-  lucas: "LUK",
-  luke: "LUK",
-  juan: "JHN",
-  john: "JHN",
-  hechos: "ACT",
-  acts: "ACT",
-  romanos: "ROM",
-  romans: "ROM",
-  "1 corintios": "1CO",
-  "2 corintios": "2CO",
-  "1 corinthians": "1CO",
-  "2 corinthians": "2CO",
-  galatas: "GAL",
-  galatians: "GAL",
-  efesios: "EPH",
-  ephesians: "EPH",
-  filipenses: "PHP",
-  philippians: "PHP",
-  colosenses: "COL",
-  colossians: "COL",
-  "1 tesalonicenses": "1TH",
-  "2 tesalonicenses": "2TH",
-  "1 thessalonians": "1TH",
-  "2 thessalonians": "2TH",
-  "1 timoteo": "1TI",
-  "2 timoteo": "2TI",
-  "1 timothy": "1TI",
-  "2 timothy": "2TI",
-  tito: "TIT",
-  titus: "TIT",
-  filemon: "PHM",
-  philemon: "PHM",
-  hebreos: "HEB",
-  hebrews: "HEB",
-  santiago: "JAS",
-  james: "JAS",
-  "1 pedro": "1PE",
-  "2 pedro": "2PE",
-  "1 peter": "1PE",
-  "2 peter": "2PE",
-  "1 juan": "1JN",
-  "2 juan": "2JN",
-  "3 juan": "3JN",
-  "1 john": "1JN",
-  "2 john": "2JN",
-  "3 john": "3JN",
-  judas: "JUD",
-  jude: "JUD",
-  apocalipsis: "REV",
-  revelation: "REV",
 };
 
 function sanitizeText(value: string): string {
@@ -171,28 +46,6 @@ function sanitizeText(value: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function normalizeBookName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export function parseRefToUsfm(ref: string): string | null {
-  const m = /^(.+?)\s+(\d{1,3}):(\d{1,3})(?:-(\d{1,3}))?$/.exec(ref.trim());
-  if (!m) return null;
-  const book = BOOK_CODES[normalizeBookName(m[1] ?? "")];
-  if (!book) return null;
-  const ch = m[2];
-  const v1 = m[3];
-  const v2 = m[4];
-  if (!ch || !v1 || !v2 || !book) return null;
-  const start = `${book}.${ch}.${v1}`;
-  return v2 && v2 !== v1 ? `${start}-${book}.${ch}.${v2}` : start;
 }
 
 async function fetchPassages(
@@ -484,7 +337,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   }
 
   // Backup query with very common terms in case category terms are too strict.
-  const backupQueries = lang === "es" ? ["Dios", "Jesús", "Señor"] : ["God", "Jesus", "Lord"];
+  const backupQueries = lang === "es" ? ["Dios", "JesÃºs", "SeÃ±or"] : ["God", "Jesus", "Lord"];
   for (const query of backupQueries) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);

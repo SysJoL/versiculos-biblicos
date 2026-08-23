@@ -68,11 +68,13 @@ export class VerseService {
     }
 
     const capableRemotes = this.remotes.filter((r) => r.supportsLanguage(lang));
+    const orderedRemotes =
+      lang === "en" ? [...capableRemotes].reverse() : capableRemotes;
 
     for (let round = 0; round < 3; round++) {
       const hints = { refs: sampleCatalogRefs(lang, mood, 6) };
 
-      for (const remote of capableRemotes) {
+      for (const remote of orderedRemotes) {
         try {
           const fromRemote = await remote.fetchVerse(
             lang,
