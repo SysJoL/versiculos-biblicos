@@ -21,9 +21,9 @@ const TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 80;
 const FORMAT_VERSION =
-  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "3";
+  String(import.meta.env.PUBLIC_PASSAGE_FORMAT_VERSION ?? "") || "4";
 
-type VerseSegment = { n: number; text: string };
+type VerseSegment = { n: number; text: string; heading?: string };
 
 type PassagePayload = {
   passage: {
@@ -83,50 +83,80 @@ const SECTION_HEADING_RE =
 const VERSE_MARKUP_RE =
   /<sup[^>]*>([\s\S]*?)<\/sup>|<span[^>]*class="[^"]*v-num[^"]*"[^>]*>([\s\S]*?)<\/span>|<span[^>]*\bdata-number="(\d+)"[^>]*>([\s\S]*?)<\/span>/gi;
 
-function htmlToVerses(html: string): { intro: string; verses: VerseSegment[] } {
-  const headings: string[] = [];
-  const body = html.replace(SECTION_HEADING_RE, (match) => {
-    const text = stripTags(match);
-    if (text) headings.push(text);
-    return " ";
-  });
+type HtmlEvent =
+  | { kind: "heading"; start: number; end: number; text: string }
+  | { kind: "verse"; start: number; end: number; n: number };
 
-  const markers: Array<{ start: number; end: number; n: number }> = [];
-  VERSE_MARKUP_RE.lastIndex = 0;
+function htmlToVerses(html: string): { intro: string; verses: VerseSegment[] } {
+  const events: HtmlEvent[] = [];
+
+  SECTION_HEADING_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = VERSE_MARKUP_RE.exec(body)) !== null) {
+  while ((m = SECTION_HEADING_RE.exec(html)) !== null) {
+    const text = stripTags(m[0]);
+    if (text) {
+      events.push({
+        kind: "heading",
+        start: m.index,
+        end: m.index + m[0].length,
+        text,
+      });
+    }
+  }
+
+  VERSE_MARKUP_RE.lastIndex = 0;
+  while ((m = VERSE_MARKUP_RE.exec(html)) !== null) {
     const explicit = m[3];
     const raw = m[1] ?? m[2] ?? m[4] ?? "";
     const digits = explicit ?? stripTags(raw).replace(/\D/g, "");
     const n = parseInt(digits, 10);
     if (!Number.isFinite(n) || n <= 0) continue;
-    markers.push({ start: m.index, end: m.index + m[0].length, n });
+    events.push({
+      kind: "verse",
+      start: m.index,
+      end: m.index + m[0].length,
+      n,
+    });
   }
 
-  if (markers.length === 0) {
-    const text = stripTags(body);
-    if (!text) {
-      return { intro: headings.join(" · "), verses: [] };
-    }
-    if (headings.length === 0) {
-      return { intro: "", verses: [{ n: 1, text }] };
-    }
-    return { intro: headings.join(" · "), verses: [{ n: 1, text }] };
-  }
+  events.sort((a, b) => a.start - b.start);
 
-  const preText = stripTags(body.slice(0, markers[0].start));
-  const introParts = [...(preText ? [preText] : []), ...headings];
-  const intro = introParts.join(" · ");
   const verses: VerseSegment[] = [];
+  let pendingHeadings: string[] = [];
 
-  for (let i = 0; i < markers.length; i++) {
-    const { start, end, n } = markers[i];
-    const nextStart = i + 1 < markers.length ? markers[i + 1].start : body.length;
-    const text = stripTags(body.slice(end, nextStart));
-    if (!text) continue;
-    if (verses.length > 0 && verses[verses.length - 1].n === n) continue;
-    verses.push({ n, text });
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+
+    if (ev.kind === "heading") {
+      pendingHeadings.push(ev.text);
+      continue;
+    }
+
+    let nextVerseIdx = events.length;
+    for (let j = i + 1; j < events.length; j++) {
+      if (events[j].kind === "verse") {
+        nextVerseIdx = j;
+        break;
+      }
+    }
+    const rangeEnd =
+      nextVerseIdx < events.length ? events[nextVerseIdx].start : html.length;
+    const slice = html.slice(ev.end, rangeEnd);
+    const cleaned = stripTags(slice.replace(SECTION_HEADING_RE, " "));
+    const heading = pendingHeadings.length
+      ? pendingHeadings.join(" · ")
+      : undefined;
+    if (!cleaned) continue;
+    if (verses.length > 0 && verses[verses.length - 1].n === ev.n) continue;
+    pendingHeadings = [];
+    verses.push({ n: ev.n, text: cleaned, ...(heading ? { heading } : {}) });
   }
+
+  const firstEvent = events[0];
+  const preText = stripTags(
+    html.slice(0, firstEvent ? firstEvent.start : html.length)
+  );
+  const intro = [...(preText ? [preText] : []), ...pendingHeadings].join(" · ");
 
   return { intro, verses };
 }

@@ -15,7 +15,7 @@ import {
 } from "@/lib/ui/sanctuary";
 import { showToast } from "@/lib/ui/toast";
 
-type VerseSegment = { n: number; text: string };
+type VerseSegment = { n: number; text: string; heading?: string };
 
 type PassageData = {
   label: string;
@@ -100,7 +100,7 @@ export function BibleReader() {
       lang,
       book: book.usfm,
       chapter: String(chapter),
-      v: "3",
+      v: "4",
     });
 
     fetch(`/api/passage?${params.toString()}`, { signal: ctrl.signal })
@@ -418,32 +418,40 @@ export function BibleReader() {
               )}
               <div className="space-y-1.5 leading-relaxed">
                 {data.verses.map((v) => (
-                  <p
-                    key={v.n}
-                    id={`v-${v.n}`}
-                    onClick={() => onVerseClick(v.n)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onVerseClick(v.n);
-                      }
-                    }}
-                    aria-pressed={highlight === v.n}
-                    className={`cursor-pointer rounded-lg px-2 py-1 text-[15px] transition-colors sm:text-base ${
-                      highlight === v.n
-                        ? isNature
-                          ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-inset ring-emerald-400/40"
-                          : "bg-gold-500/15 text-gold-100 ring-1 ring-inset ring-gold-500/45"
-                        : "text-gold-50/90 hover:bg-white/5"
-                    }`}
-                  >
-                    <sup className={`mr-1 select-none text-xs font-bold ${accentText}`}>
-                      {v.n}
-                    </sup>
-                    {v.text}
-                  </p>
+                  <div key={v.n}>
+                    {v.heading && (
+                      <p
+                        className={`mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider ${accentText}`}
+                      >
+                        {v.heading}
+                      </p>
+                    )}
+                    <p
+                      id={`v-${v.n}`}
+                      onClick={() => onVerseClick(v.n)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onVerseClick(v.n);
+                        }
+                      }}
+                      aria-pressed={highlight === v.n}
+                      className={`cursor-pointer rounded-lg px-2 py-1 text-[15px] transition-colors sm:text-base ${
+                        highlight === v.n
+                          ? isNature
+                            ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-inset ring-emerald-400/40"
+                            : "bg-gold-500/15 text-gold-100 ring-1 ring-inset ring-gold-500/45"
+                          : "text-gold-50/90 hover:bg-white/5"
+                      }`}
+                    >
+                      <sup className={`mr-1 select-none text-xs font-bold ${accentText}`}>
+                        {v.n}
+                      </sup>
+                      {v.text}
+                    </p>
+                  </div>
                 ))}
               </div>
               {data.translation && (
