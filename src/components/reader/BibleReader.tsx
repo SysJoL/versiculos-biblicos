@@ -412,7 +412,9 @@ export function BibleReader() {
           {!loading && !error && data && (
             <>
               {data.intro && (
-                <p className="mb-3 text-sm italic text-gold-100/60">{data.intro}</p>
+                <p className={`mb-3 text-sm font-semibold ${accentText} opacity-80`}>
+                  {data.intro}
+                </p>
               )}
               <div className="space-y-1.5 leading-relaxed">
                 {data.verses.map((v) => (
