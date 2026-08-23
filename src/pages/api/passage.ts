@@ -314,32 +314,6 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
     );
   }
 
-  if (url.searchParams.get("debug") === "raw") {
-    const langD = url.searchParams.get("lang") === "en" ? "en" : "es";
-    const bRaw = resolveBook(url.searchParams.get("book"));
-    const cRaw = Number(url.searchParams.get("chapter")) || 1;
-    if (!bRaw) {
-      return new Response(JSON.stringify({ error: "bad-book" }), {
-        status: 400,
-        headers: jsonHeaders({ "cache-control": "no-store" }),
-      });
-    }
-    const raw = await fetchRawApiBible(langD, `${bRaw.usfm}.${cRaw}`);
-    return new Response(
-      JSON.stringify({
-        lang: langD,
-        bid: langD === "es"
-          ? import.meta.env.PUBLIC_API_BIBLE_BID_ES
-          : import.meta.env.PUBLIC_API_BIBLE_BID_EN,
-        base: import.meta.env.PUBLIC_API_BIBLE_BASE ?? DEFAULT_BASE,
-        len: raw?.length ?? 0,
-        head: raw ? raw.slice(0, 3000) : null,
-        tail: raw && raw.length > 3000 ? raw.slice(-800) : null,
-      }),
-      { status: 200, headers: jsonHeaders({ "cache-control": "no-store" }) }
-    );
-  }
-
   const lang = url.searchParams.get("lang") === "en" ? "en" : "es";
   const chapterParam = Number(url.searchParams.get("chapter"));
   const verseParam = Number(url.searchParams.get("verse"));
