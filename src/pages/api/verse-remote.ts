@@ -38,12 +38,219 @@ type ApiBibleCandidate = {
   text: string;
 };
 
+const BOOK_CODES: Record<string, string> = {
+  genesis: "GEN",
+  exodo: "EXO",
+  exodus: "EXO",
+  levitico: "LEV",
+  leviticus: "LEV",
+  numeros: "NUM",
+  numbers: "NUM",
+  deuteronomio: "DEU",
+  deuteronomy: "DEU",
+  josue: "JOS",
+  joshua: "JOS",
+  jueces: "JDG",
+  judges: "JDG",
+  rut: "RUT",
+  ruth: "RUT",
+  "1 samuel": "1SA",
+  "2 samuel": "2SA",
+  "1 reyes": "1KI",
+  "2 reyes": "2KI",
+  "1 kings": "1KI",
+  "2 kings": "2KI",
+  "1 cronicas": "1CH",
+  "2 cronicas": "2CH",
+  "1 chronicles": "1CH",
+  "2 chronicles": "2CH",
+  esdras: "EZR",
+  ezra: "EZR",
+  nehemias: "NEH",
+  nehemiah: "NEH",
+  ester: "EST",
+  esther: "EST",
+  job: "JOB",
+  salmo: "PSA",
+  salmos: "PSA",
+  psalm: "PSA",
+  psalms: "PSA",
+  proverbios: "PRO",
+  proverbs: "PRO",
+  eclesiastes: "ECC",
+  ecclesiastes: "ECC",
+  cantares: "SNG",
+  "song of solomon": "SNG",
+  isaias: "ISA",
+  isaiah: "ISA",
+  jeremias: "JER",
+  jeremiah: "JER",
+  lamentaciones: "LAM",
+  lamentations: "LAM",
+  ezequiel: "EZK",
+  ezekiel: "EZK",
+  daniel: "DAN",
+  oseas: "HOS",
+  hosea: "HOS",
+  joel: "JOL",
+  amos: "AMO",
+  jonas: "JON",
+  jonah: "JON",
+  miqueas: "MIC",
+  micah: "MIC",
+  nahum: "NAM",
+  habacuc: "HAB",
+  habakkuk: "HAB",
+  sofonias: "ZEP",
+  zephaniah: "ZEP",
+  hageo: "HAG",
+  haggai: "HAG",
+  zacarias: "ZEC",
+  zechariah: "ZEC",
+  malaquias: "MAL",
+  malachi: "MAL",
+  mateo: "MAT",
+  matthew: "MAT",
+  marcos: "MRK",
+  mark: "MRK",
+  lucas: "LUK",
+  luke: "LUK",
+  juan: "JHN",
+  john: "JHN",
+  hechos: "ACT",
+  acts: "ACT",
+  romanos: "ROM",
+  romans: "ROM",
+  "1 corintios": "1CO",
+  "2 corintios": "2CO",
+  "1 corinthians": "1CO",
+  "2 corinthians": "2CO",
+  galatas: "GAL",
+  galatians: "GAL",
+  efesios: "EPH",
+  ephesians: "EPH",
+  filipenses: "PHP",
+  philippians: "PHP",
+  colosenses: "COL",
+  colossians: "COL",
+  "1 tesalonicenses": "1TH",
+  "2 tesalonicenses": "2TH",
+  "1 thessalonians": "1TH",
+  "2 thessalonians": "2TH",
+  "1 timoteo": "1TI",
+  "2 timoteo": "2TI",
+  "1 timothy": "1TI",
+  "2 timothy": "2TI",
+  tito: "TIT",
+  titus: "TIT",
+  filemon: "PHM",
+  philemon: "PHM",
+  hebreos: "HEB",
+  hebrews: "HEB",
+  santiago: "JAS",
+  james: "JAS",
+  "1 pedro": "1PE",
+  "2 pedro": "2PE",
+  "1 peter": "1PE",
+  "2 peter": "2PE",
+  "1 juan": "1JN",
+  "2 juan": "2JN",
+  "3 juan": "3JN",
+  "1 john": "1JN",
+  "2 john": "2JN",
+  "3 john": "3JN",
+  judas: "JUD",
+  jude: "JUD",
+  apocalipsis: "REV",
+  revelation: "REV",
+};
+
 function sanitizeText(value: string): string {
   return value
     .replace(/<br\s*\/?>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeBookName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function parseRefToUsfm(ref: string): string | null {
+  const m = /^(.+?)\s+(\d{1,3}):(\d{1,3})(?:-(\d{1,3}))?$/.exec(ref.trim());
+  if (!m) return null;
+  const book = BOOK_CODES[normalizeBookName(m[1] ?? "")];
+  if (!book) return null;
+  const ch = m[2];
+  const v1 = m[3];
+  const v2 = m[4];
+  if (!ch || !v1 || !v2 || !book) return null;
+  const start = `${book}.${ch}.${v1}`;
+  return v2 && v2 !== v1 ? `${start}-${book}.${ch}.${v2}` : start;
+}
+
+async function fetchPassages(
+  base: string,
+  bibleId: string,
+  key: string,
+  ids: string[],
+  timeoutMs: number
+): Promise<unknown | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const u = `${base}/bibles/${encodeURIComponent(bibleId)}/passages/${ids.map(encodeURIComponent).join(",")}?content-type=text`;
+    const res = await fetch(u, {
+      headers: { "api-key": key, accept: "application/json" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as unknown;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extractPassageTexts(payload: unknown): Array<{
+  id: string;
+  text: string;
+}> {
+  const out: Array<{ id: string; text: string }> = [];
+  const seen = new Set<string>();
+  const stack: unknown[] = [payload];
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    if (Array.isArray(node)) {
+      for (const item of node) stack.push(item);
+      continue;
+    }
+    const rec = node as Record<string, unknown>;
+    const id = typeof rec.id === "string" ? rec.id : "";
+    const content =
+      typeof rec.content === "string"
+        ? sanitizeText(rec.content)
+        : typeof rec.text === "string"
+          ? sanitizeText(rec.text)
+          : "";
+    if (id && content && /^[1-9A-Z]/i.test(id) && id.includes(".")) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        out.push({ id, text: content });
+      }
+    }
+    for (const value of Object.values(rec)) stack.push(value);
+  }
+  return out;
 }
 
 function scoreCandidate(
@@ -172,6 +379,64 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
     /\/$/,
     "",
   );
+
+  const refsParam = (url.searchParams.get("refs") ?? "").slice(0, 1500);
+  const requestedRefs = Array.from(
+    new Set(
+      refsParam
+        .split("||")
+        .map((x) => x.trim())
+        .filter(Boolean),
+    ),
+  ).filter((ref) => !avoid.has(ref.toLowerCase()));
+
+  if (requestedRefs.length > 0) {
+    const usfmToRef = new Map<string, string>();
+    for (const ref of requestedRefs) {
+      const id = parseRefToUsfm(ref);
+      if (id && !usfmToRef.has(id)) usfmToRef.set(id, ref);
+    }
+    const entries = [...usfmToRef.entries()];
+    for (let i = entries.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const a = entries[i];
+      const b = entries[j];
+      if (!a || !b) continue;
+      [entries[i], entries[j]] = [b, a];
+    }
+
+    for (let i = 0; i < entries.length; i += 8) {
+      const chunk = entries.slice(i, i + 8);
+      const payload = await fetchPassages(
+        base,
+        bibleId,
+        key,
+        chunk.map((e) => e[0]),
+        6000,
+      );
+      if (!payload) continue;
+      const passages = extractPassageTexts(payload);
+      for (const p of passages) {
+        const humanRef = usfmToRef.get(p.id);
+        if (!humanRef) continue;
+        if (avoid.has(humanRef.toLowerCase())) continue;
+        if (p.text.length < 15) continue;
+        return new Response(
+          JSON.stringify({
+            verse: {
+              text: p.text,
+              ref: humanRef,
+              source: "api-bible",
+              language: lang,
+              categories: [toCategoryKey(lang, mood)],
+            },
+          }),
+          { status: 200, headers: jsonHeaders(rlHdrs) },
+        );
+      }
+    }
+  }
+
   const keywords = KEYWORDS[lang][mood];
   const rotated = [...keywords].sort(() => Math.random() - 0.5);
   const timeoutMs = 6000;

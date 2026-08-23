@@ -1,9 +1,10 @@
-import type { IRemoteBibleSource } from "../repositories/IBibleRepository";
+import type {
+  IRemoteBibleSource,
+} from "../repositories/IBibleRepository";
 import type { LocalJsonBibleRepository } from "../repositories/LocalJsonBibleRepository";
 import { VerseRefCache } from "../cache/VerseRefCache";
+import { sampleCatalogRefs } from "../domain/verseCatalog";
 import type { Lang, Mood, Verse } from "../domain/types";
-
-const MAX_ATTEMPTS = 45;
 
 type Source =
   | { kind: "remote"; idx: number }
@@ -11,7 +12,7 @@ type Source =
 
 function shuffleSources(
   remotes: IRemoteBibleSource[],
-  lang: Lang,
+  lang: Lang
 ): Source[] {
   const sources: Source[] = [];
   for (let i = 0; i < remotes.length; i++) {
@@ -34,43 +35,74 @@ export class VerseService {
     private readonly cache: VerseRefCache
   ) {}
 
+  private rememberAndReturn(verse: Verse): Verse {
+    this.cache.rememberRef(verse.ref);
+    return verse;
+  }
+
   async getNextVerse(lang: Lang, mood: Mood): Promise<Verse> {
-    const sources = shuffleSources(this.remotes, lang);
+    const avoid = this.cache.asSet();
 
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const avoid = this.cache.asSet();
-
+    if (mood === "all") {
+      const sources = shuffleSources(this.remotes, lang);
       for (const src of sources) {
         if (src.kind === "remote") {
           const fromRemote = await this.remotes[src.idx].fetchVerse(
             lang,
             mood,
-            avoid,
+            avoid
           );
           if (fromRemote && !avoid.has(fromRemote.ref)) {
-            this.cache.rememberRef(fromRemote.ref);
-            return fromRemote;
+            return this.rememberAndReturn(fromRemote);
           }
         } else {
           const fromLocal = this.local.getRandomFromLocal(lang, mood, avoid);
-          if (fromLocal && !avoid.has(fromLocal.ref)) {
-            this.cache.rememberRef(fromLocal.ref);
-            return fromLocal;
-          }
           if (fromLocal) {
-            this.cache.rememberRef(fromLocal.ref);
-            return fromLocal;
+            return this.rememberAndReturn(fromLocal);
           }
         }
+      }
+      const anyLocal = this.local.getRandomFromLocal(lang, mood, new Set());
+      if (anyLocal) return this.rememberAndReturn(anyLocal);
+      return this.fallbackVerse();
+    }
+
+    const capableRemotes = this.remotes.filter((r) => r.supportsLanguage(lang));
+
+    for (let round = 0; round < 3; round++) {
+      const hints = { refs: sampleCatalogRefs(lang, mood, 6) };
+
+      for (const remote of capableRemotes) {
+        try {
+          const fromRemote = await remote.fetchVerse(
+            lang,
+            mood,
+            avoid,
+            hints
+          );
+          if (fromRemote && !avoid.has(fromRemote.ref)) {
+            return this.rememberAndReturn(fromRemote);
+          }
+        } catch {
+          // try the next source on network/API errors
+        }
+      }
+
+      const fromLocal = this.local.getRandomFromLocal(lang, mood, avoid);
+      if (fromLocal) {
+        return this.rememberAndReturn(fromLocal);
       }
     }
 
     const last = this.local.getRandomFromLocal(lang, mood, new Set());
     if (last) {
-      this.cache.rememberRef(last.ref);
-      return last;
+      return this.rememberAndReturn(last);
     }
 
+    return this.fallbackVerse();
+  }
+
+  private fallbackVerse(): Verse {
     return {
       id: "fallback",
       text: "In the beginning God created the heaven and the earth.",
