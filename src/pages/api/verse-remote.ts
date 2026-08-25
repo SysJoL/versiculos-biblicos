@@ -1,4 +1,4 @@
-import type { APIRoute } from "astro";
+﻿import type { APIRoute } from "astro";
 import type { Lang, Mood } from "@/lib/domain/types";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/server/rateLimiter";
 
@@ -33,6 +33,8 @@ const KEYWORDS: Record<Lang, Record<Mood, string[]>> = {
   },
 };
 
+import { parseRefToUsfm } from "@/lib/domain/refParser";
+
 type ApiBibleCandidate = {
   ref: string;
   text: string;
@@ -44,6 +46,64 @@ function sanitizeText(value: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+async function fetchPassages(
+  base: string,
+  bibleId: string,
+  key: string,
+  ids: string[],
+  timeoutMs: number
+): Promise<unknown | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const u = `${base}/bibles/${encodeURIComponent(bibleId)}/passages/${ids.map(encodeURIComponent).join(",")}?content-type=text`;
+    const res = await fetch(u, {
+      headers: { "api-key": key, accept: "application/json" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as unknown;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extractPassageTexts(payload: unknown): Array<{
+  id: string;
+  text: string;
+}> {
+  const out: Array<{ id: string; text: string }> = [];
+  const seen = new Set<string>();
+  const stack: unknown[] = [payload];
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    if (Array.isArray(node)) {
+      for (const item of node) stack.push(item);
+      continue;
+    }
+    const rec = node as Record<string, unknown>;
+    const id = typeof rec.id === "string" ? rec.id : "";
+    const content =
+      typeof rec.content === "string"
+        ? sanitizeText(rec.content)
+        : typeof rec.text === "string"
+          ? sanitizeText(rec.text)
+          : "";
+    if (id && content && /^[1-9A-Z]/i.test(id) && id.includes(".")) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        out.push({ id, text: content });
+      }
+    }
+    for (const value of Object.values(rec)) stack.push(value);
+  }
+  return out;
 }
 
 function scoreCandidate(
@@ -172,6 +232,64 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
     /\/$/,
     "",
   );
+
+  const refsParam = (url.searchParams.get("refs") ?? "").slice(0, 1500);
+  const requestedRefs = Array.from(
+    new Set(
+      refsParam
+        .split("||")
+        .map((x) => x.trim())
+        .filter(Boolean),
+    ),
+  ).filter((ref) => !avoid.has(ref.toLowerCase()));
+
+  if (requestedRefs.length > 0) {
+    const usfmToRef = new Map<string, string>();
+    for (const ref of requestedRefs) {
+      const id = parseRefToUsfm(ref);
+      if (id && !usfmToRef.has(id)) usfmToRef.set(id, ref);
+    }
+    const entries = [...usfmToRef.entries()];
+    for (let i = entries.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const a = entries[i];
+      const b = entries[j];
+      if (!a || !b) continue;
+      [entries[i], entries[j]] = [b, a];
+    }
+
+    for (let i = 0; i < entries.length; i += 8) {
+      const chunk = entries.slice(i, i + 8);
+      const payload = await fetchPassages(
+        base,
+        bibleId,
+        key,
+        chunk.map((e) => e[0]),
+        6000,
+      );
+      if (!payload) continue;
+      const passages = extractPassageTexts(payload);
+      for (const p of passages) {
+        const humanRef = usfmToRef.get(p.id);
+        if (!humanRef) continue;
+        if (avoid.has(humanRef.toLowerCase())) continue;
+        if (p.text.length < 15) continue;
+        return new Response(
+          JSON.stringify({
+            verse: {
+              text: p.text,
+              ref: humanRef,
+              source: "api-bible",
+              language: lang,
+              categories: [toCategoryKey(lang, mood)],
+            },
+          }),
+          { status: 200, headers: jsonHeaders(rlHdrs) },
+        );
+      }
+    }
+  }
+
   const keywords = KEYWORDS[lang][mood];
   const rotated = [...keywords].sort(() => Math.random() - 0.5);
   const timeoutMs = 6000;
@@ -219,7 +337,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   }
 
   // Backup query with very common terms in case category terms are too strict.
-  const backupQueries = lang === "es" ? ["Dios", "Jesús", "Señor"] : ["God", "Jesus", "Lord"];
+  const backupQueries = lang === "es" ? ["Dios", "JesÃºs", "SeÃ±or"] : ["God", "Jesus", "Lord"];
   for (const query of backupQueries) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);

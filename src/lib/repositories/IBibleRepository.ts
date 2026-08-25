@@ -11,11 +11,16 @@ export interface IBibleRepository {
   ): Verse | null;
 }
 
+export interface VerseFetchHints {
+  refs?: string[];
+}
+
 export interface IRemoteBibleSource {
   readonly supportsLanguage: (lang: Lang) => boolean;
   fetchVerse(
     lang: Lang,
     mood: Mood,
-    avoidRefs: ReadonlySet<string>
+    avoidRefs: ReadonlySet<string>,
+    hints?: VerseFetchHints
   ): Promise<Verse | null>;
 }

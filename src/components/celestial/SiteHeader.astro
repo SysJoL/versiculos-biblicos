@@ -80,6 +80,15 @@ const { currentLang, currentMood } = Astro.props;
       <div class="hidden sm:block">
         <ConnectionModeBadge />
       </div>
+      <a
+        href="/lectura"
+        class="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        aria-label="Lectura bíblica"
+        title="Lectura bíblica"
+      >
+        <i class="fa-solid fa-book-open text-sm text-gold-300/95" aria-hidden="true"></i>
+        <span class="sr-only">Lectura bíblica</span>
+      </a>
       <LanguageBar currentMood={currentMood} />
     </div>
   </div>
@@ -91,13 +100,25 @@ const { currentLang, currentMood } = Astro.props;
     if (!root) return;
     const mql = window.matchMedia("(min-width: 768px)");
 
+    let lastY = window.scrollY;
+
     const onScroll = () => {
+      const y = window.scrollY;
+
       // On mobile we keep the header logo stable to avoid flicker.
       if (!mql.matches) {
         root.classList.remove("is-scrolled");
-        return;
+      } else {
+        root.classList.toggle("is-scrolled", y > 26);
       }
-      root.classList.toggle("is-scrolled", window.scrollY > 26);
+
+      if (y < 80 || y <= lastY) {
+        root.classList.remove("nav-hidden");
+      } else if (y > 120) {
+        root.classList.add("nav-hidden");
+      }
+
+      lastY = y;
     };
 
     onScroll();
@@ -107,6 +128,20 @@ const { currentLang, currentMood } = Astro.props;
 </script>
 
 <style>
+  [data-site-header] {
+    transition: transform 0.25s ease;
+  }
+  [data-site-header].nav-hidden {
+    transform: translateY(calc(-100% - env(safe-area-inset-top, 0px)));
+  }
+  [data-site-header]:focus-within {
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-site-header] {
+      transition: none;
+    }
+  }
   @media (min-width: 768px) {
     [data-site-header].is-scrolled [data-site-brand-dove] {
       opacity: 1;

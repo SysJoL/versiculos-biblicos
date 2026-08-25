@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { SANCTUARY_LS_KEY } from "@/lib/ui/sanctuary";
 
 type Theme = "celestial" | "nature";
 
@@ -235,9 +236,7 @@ export default function CosmicBackground() {
 
     // Load initial preference from localStorage
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(
-        "refugio-celestial:sanctuary-theme"
-      ) as Theme | null;
+      const stored = localStorage.getItem(SANCTUARY_LS_KEY);
       if (stored === "nature" || stored === "celestial") {
         themeRef.current = stored;
         transitionValRef.current = stored === "nature" ? 1 : 0;
