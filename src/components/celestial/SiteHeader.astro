@@ -5,6 +5,7 @@ import ConnectionModeBadge from "@/components/celestial/ConnectionModeBadge.astr
 import type { Lang, Mood } from "@/lib/domain/types";
 
 const { currentLang, currentMood } = Astro.props;
+const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
 ---
 
 <header
@@ -15,7 +16,12 @@ const { currentLang, currentMood } = Astro.props;
   <div
     class="relative mx-auto flex min-h-[2.875rem] w-full max-w-[1600px] flex-row items-center gap-3 px-3 py-3 sm:min-h-12 sm:gap-4 sm:px-5 sm:py-3.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-4 lg:gap-x-8 lg:px-10 lg:py-4"
   >
-    <div class="hidden min-w-0 md:flex md:items-center md:gap-2" aria-hidden="true">
+    <div class="hidden min-w-0 md:flex md:items-center md:gap-2">
+      <a
+        href={homeHref}
+        class="focus-ring flex min-w-0 items-center gap-2 rounded-xl"
+        aria-label="Ir al inicio"
+      >
       <div class="relative h-10 w-10 lg:h-11 lg:w-11">
         <img
           data-site-brand-dove
@@ -37,10 +43,16 @@ const { currentLang, currentMood } = Astro.props;
         <span class="block">Versículos</span>
         <span class="block">Bíblicos</span>
       </p>
+      </a>
     </div>
 
     <!-- Móvil: logo + nombre de app -->
     <div class="shrink-0 md:hidden flex items-center gap-2">
+      <a
+        href={homeHref}
+        class="focus-ring flex items-center gap-2 rounded-xl"
+        aria-label="Ir al inicio"
+      >
       <div class="relative h-9 w-9">
         <img
           data-site-brand-dove
@@ -62,6 +74,7 @@ const { currentLang, currentMood } = Astro.props;
         <span class="block">Versículos</span>
         <span class="block">Bíblicos</span>
       </p>
+      </a>
     </div>
 
     <!-- Móvil: filtro alineado a la derecha | PC: columna central -->
