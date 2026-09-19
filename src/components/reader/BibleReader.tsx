@@ -75,9 +75,27 @@ export function BibleReader() {
   const [errorReason, setErrorReason] = useState<string | undefined>(undefined);
   const [nonce, setNonce] = useState(0);
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
+  // El header del sitio se oculta al bajar (clase `nav-hidden`); las barras
+  // sticky del lector suben al top para ocupar su lugar y bajan cuando regresa.
+  const [siteNavHidden, setSiteNavHidden] = useState(false);
+
+  useEffect(() => {
+    const el = document.querySelector("[data-site-header]");
+    if (!el) return;
+    const sync = () => setSiteNavHidden(el.classList.contains("nav-hidden"));
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
 
   const L = UI[lang].reader;
   const isNature = sanctuary === "nature";
+  // Offset de las barras sticky: debajo del header del sitio, o pegadas al
+  // top cuando este se oculta al bajar.
+  const stickyTop = siteNavHidden
+    ? "top-[env(safe-area-inset-top,0px)]"
+    : "top-[calc(4.5rem+env(safe-area-inset-top,0px))] md:top-[calc(5rem+env(safe-area-inset-top,0px))]";
   const stage = !book ? (testament ? "books" : "testaments") : !chapter ? "chapters" : "text";
 
   useEffect(() => {
@@ -629,7 +647,7 @@ export function BibleReader() {
 
       {stage === "books" ? (
         <div
-          className={`sticky top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:px-4 md:top-[calc(5rem+env(safe-area-inset-top,0px))] ${stickyBg}`}
+          className={`sticky ${stickyTop} z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:px-4 ${stickyBg}`}
         >
           {searchForm}
           <div className="mb-3 flex items-center gap-2">
@@ -752,7 +770,7 @@ export function BibleReader() {
           className={`rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`}
         >
           <header
-            className={`sticky top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:-mx-6 sm:px-6 md:top-[calc(5rem+env(safe-area-inset-top,0px))] ${
+            className={`sticky ${stickyTop} z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
               isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88"
             }`}
           >
