@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UI } from "@/lib/i18n/labels";
 import type { Lang } from "@/lib/domain/types";
 import { parseRef } from "@/lib/domain/refParser";
@@ -7,13 +7,18 @@ import {
   OLD_TESTAMENT,
   bookLabel,
   findCatalogBook,
+  getRefSuggestions,
   type CatalogBook,
+  type RefSuggestion,
 } from "@/lib/data/booksCatalog";
 import {
   getStoredSanctuary,
   type SanctuaryTheme,
 } from "@/lib/ui/sanctuary";
 import { showToast } from "@/lib/ui/toast";
+import { VerseContextMenu } from "./VerseContextMenu";
+import { VerseMenuSheet } from "./VerseMenuSheet";
+import { VerseSquareImage } from "./VerseSquareImage";
 
 type VerseSegment = { n: number; text: string; heading?: string };
 
@@ -54,9 +59,16 @@ export function BibleReader() {
   const [book, setBook] = useState<CatalogBook | null>(
     () => (init.bookCode ? findCatalogBook(init.bookCode) ?? null : null)
   );
+  const [testament, setTestament] = useState<"AT" | "NT" | null>(
+    () => (init.bookCode ? findCatalogBook(init.bookCode)?.testament ?? null : null)
+  );
   const [chapter, setChapter] = useState<number | null>(init.chapter ?? null);
   const [highlight, setHighlight] = useState<number | undefined>(init.verse);
   const [search, setSearch] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<PassageData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -66,7 +78,7 @@ export function BibleReader() {
 
   const L = UI[lang].reader;
   const isNature = sanctuary === "nature";
-  const stage = !book ? "books" : !chapter ? "chapters" : "text";
+  const stage = !book ? (testament ? "books" : "testaments") : !chapter ? "chapters" : "text";
 
   useEffect(() => {
     setSanctuary(getStoredSanctuary());
@@ -77,6 +89,133 @@ export function BibleReader() {
     window.addEventListener("refugio-sanctuary-changed", handler);
     return () => window.removeEventListener("refugio-sanctuary-changed", handler);
   }, []);
+
+  const suggestions = useMemo(
+    () => getRefSuggestions(search, lang, 7),
+    [search, lang]
+  );
+  const parsedPreview = useMemo(() => parseRef(search), [search]);
+  const trimmedSearch = search.trim();
+  // Modo texto: no es referencia válida ni hay sugerencia de libro, y hay
+  // suficiente texto para buscar por palabras ("amor", "En el principio…").
+  const textMode =
+    parsedPreview === null &&
+    suggestions.length === 0 &&
+    trimmedSearch.length >= 3;
+  const showSuggestions = focused && trimmedSearch.length > 0;
+
+  type TextHit = { ref: string; text: string };
+  const [textResults, setTextResults] = useState<TextHit[]>([]);
+  const [textLoading, setTextLoading] = useState(false);
+
+  useEffect(() => {
+    setActiveIdx(-1);
+  }, [search]);
+
+  // Búsqueda por texto con debounce (300ms) y cancelación.
+  useEffect(() => {
+    if (!textMode) {
+      setTextLoading(false);
+      return;
+    }
+    setTextLoading(true);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ lang, q: trimmedSearch });
+      fetch(`/api/search?${params.toString()}`, { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((json: { results?: TextHit[] }) => {
+          setTextResults(
+            Array.isArray(json?.results) ? json.results.slice(0, 8) : []
+          );
+        })
+        .catch((err) => {
+          if (err?.name !== "AbortError") setTextResults([]);
+        })
+        .finally(() => setTextLoading(false));
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [textMode, trimmedSearch, lang]);
+
+  const totalOptions =
+    suggestions.length + (textMode ? textResults.length : 0);
+
+  useEffect(() => {
+    if (!focused) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [focused]);
+
+  const applySuggestion = useCallback(
+    (s: RefSuggestion) => {
+      if (!s.chapter) {
+        setBook(s.book);
+        setTestament(s.book.testament);
+        setChapter(null);
+        setHighlight(undefined);
+        setData(null);
+      } else {
+        if (s.chapter < 1 || s.chapter > s.book.chapters) {
+          showToast(
+            lang === "es" ? "Referencia fuera de rango." : "Reference out of range.",
+            "warning"
+          );
+          return;
+        }
+        // Si cambia de libro/capítulo, limpia el texto anterior para evitar parpadeo.
+        if (book?.usfm !== s.book.usfm || chapter !== s.chapter) {
+          setData(null);
+        }
+        setBook(s.book);
+        setTestament(s.book.testament);
+        setChapter(s.chapter);
+        setHighlight(s.verse);
+      }
+      setSearch("");
+      setActiveIdx(-1);
+      setFocused(false);
+      inputRef.current?.blur();
+    },
+    [lang, book?.usfm, chapter]
+  );
+
+  /** Abre un resultado de búsqueda por texto (ej: "amor" → Salmo 136:1). */
+  const applyHit = useCallback(
+    (hit: { ref: string; text: string }) => {
+      const parsed = parseRef(hit.ref);
+      const found = parsed ? findCatalogBook(parsed.bookCode) : undefined;
+      if (!parsed || !found) {
+        showToast(L.noResultsText, "warning");
+        return;
+      }
+      if (parsed.chapter < 1 || parsed.chapter > found.chapters) {
+        showToast(
+          lang === "es" ? "Referencia fuera de rango." : "Reference out of range.",
+          "warning"
+        );
+        return;
+      }
+      setData(null);
+      setBook(found);
+      setTestament(found.testament);
+      setChapter(parsed.chapter);
+      setHighlight(parsed.verse);
+      setSearch("");
+      setTextResults([]);
+      setActiveIdx(-1);
+      setFocused(false);
+      inputRef.current?.blur();
+    },
+    [lang, L.noResultsText]
+  );
 
   const syncUrl = useCallback(
     (l: Lang, b: CatalogBook | null, c: number | null, v?: number) => {
@@ -152,14 +291,37 @@ export function BibleReader() {
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // Si hay opción activa (navegación por teclado), úsala: refs primero,
+    // luego resultados de texto.
+    if (activeIdx >= 0 && activeIdx < totalOptions) {
+      if (activeIdx < suggestions.length) {
+        const s = suggestions[activeIdx];
+        if (s) applySuggestion(s);
+        return;
+      }
+      const hit = textResults[activeIdx - suggestions.length];
+      if (hit) applyHit(hit);
+      return;
+    }
+    // Si hay una sola sugerencia exacta con capítulo, úsala directo.
+    if (suggestions.length === 1 && suggestions[0]?.chapter) {
+      const only = suggestions[0];
+      const parsed = parseRef(search);
+      if (!parsed) {
+        applySuggestion(only);
+        return;
+      }
+    }
     const parsed = parseRef(search);
     if (!parsed) {
-      showToast(
-        lang === "es"
-          ? "No se reconoció la referencia. Ej: Juan 3:16"
-          : "Reference not recognized. E.g.: John 3:16",
-        "warning"
-      );
+      // No es referencia: abre el primer versículo relacionado si lo hay.
+      // La búsqueda por texto ya va filtrada por el idioma del switch.
+      if (textResults[0]) {
+        applyHit(textResults[0]);
+        return;
+      }
+      if (textLoading) return;
+      showToast(L.noResultsText, "warning");
       return;
     }
     const found = findCatalogBook(parsed.bookCode);
@@ -171,13 +333,45 @@ export function BibleReader() {
       return;
     }
     setBook(found);
+    setTestament(found.testament);
     setChapter(parsed.chapter);
     setHighlight(parsed.verse);
     setSearch("");
+    setFocused(false);
+  };
+
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" && totalOptions > 0) {
+      e.preventDefault();
+      setFocused(true);
+      setActiveIdx((prev) => (prev + 1) % totalOptions);
+    } else if (e.key === "ArrowUp" && totalOptions > 0) {
+      e.preventDefault();
+      setActiveIdx((prev) => (prev <= 0 ? totalOptions - 1 : prev - 1));
+    } else if (e.key === "Escape") {
+      setActiveIdx(-1);
+      setFocused(false);
+    }
+  };
+
+  const activeDescendant =
+    activeIdx >= 0 && activeIdx < totalOptions
+      ? activeIdx < suggestions.length
+        ? `reader-search-opt-${activeIdx}`
+        : `reader-search-text-${activeIdx - suggestions.length}`
+      : undefined;
+
+  const selectTestament = (t: "AT" | "NT") => {
+    setBook(null);
+    setChapter(null);
+    setHighlight(undefined);
+    setData(null);
+    setTestament(t);
   };
 
   const selectBook = (b: CatalogBook) => {
     setBook(b);
+    setTestament(b.testament);
     setChapter(null);
     setHighlight(undefined);
   };
@@ -191,6 +385,34 @@ export function BibleReader() {
   const onVerseClick = (n: number) => {
     setHighlight((prev) => (prev === n ? undefined : n));
   };
+
+  type MenuVerse = { n: number; text: string };
+  const [menuVerse, setMenuVerse] = useState<MenuVerse | null>(null);
+  // Con posición → popover (clic derecho en PC); sin posición → sheet (botón ⋮).
+  const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [squareVerse, setSquareVerse] = useState<{ n: number; text: string } | null>(null);
+
+  const openVerseMenu = useCallback(
+    (clientX: number, clientY: number, verse: { n: number; text: string }) => {
+      setHighlight(verse.n);
+      setSquareVerse(verse);
+      setMenuVerse({ n: verse.n, text: verse.text });
+      setPopoverPos({ x: clientX, y: clientY });
+    },
+    []
+  );
+
+  const openVerseSheet = useCallback((verse: { n: number; text: string }) => {
+    setHighlight(verse.n);
+    setSquareVerse(verse);
+    setMenuVerse({ n: verse.n, text: verse.text });
+    setPopoverPos(null);
+  }, []);
+
+  const closeVerseMenu = useCallback(() => {
+    setMenuVerse(null);
+    setPopoverPos(null);
+  }, []);
 
   const goBack = () => {
     if (stage === "text") {
@@ -232,10 +454,169 @@ export function BibleReader() {
   const chipBase =
     "focus-ring rounded-xl border bg-black/35 px-3 py-2 text-sm backdrop-blur-sm transition";
 
-  const bookGroups = [
-    { label: L.ot, list: OLD_TESTAMENT },
-    { label: L.nt, list: NEW_TESTAMENT },
+  const testamentBooks = testament === "NT" ? NEW_TESTAMENT : OLD_TESTAMENT;
+  const testamentLabel = testament === "NT" ? L.newTestament : L.oldTestament;
+  const testamentCards = [
+    {
+      key: "AT" as const,
+      label: L.oldTestament,
+      count: OLD_TESTAMENT.length,
+      icon: "fa-solid fa-scroll",
+    },
+    {
+      key: "NT" as const,
+      label: L.newTestament,
+      count: NEW_TESTAMENT.length,
+      icon: "fa-solid fa-cross",
+    },
   ];
+
+  const searchForm = (
+      <form onSubmit={onSearch} className="mb-4 flex gap-2" role="search">
+        <div ref={searchBoxRef} className="relative min-w-0 flex-1">
+          <input
+            ref={inputRef}
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onKeyDown={onSearchKeyDown}
+            placeholder={L.searchPlaceholder}
+            aria-label={L.search}
+            role="combobox"
+            aria-expanded={showSuggestions}
+            aria-controls="reader-search-listbox"
+            aria-activedescendant={activeDescendant}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            className={`${chipBase} w-full border-white/15 pr-9 text-gold-50 placeholder:text-gold-200/40 focus:outline-none`}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setTextResults([]);
+                setActiveIdx(-1);
+                inputRef.current?.focus();
+              }}
+              aria-label={L.clearSearch}
+              title={L.clearSearch}
+              className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-xl text-gold-200/60 transition hover:text-gold-100"
+            >
+              <i className="fa-solid fa-xmark text-sm" aria-hidden />
+            </button>
+          )}
+          {showSuggestions && (
+            <div className="absolute inset-x-0 top-full z-30 pt-1.5">
+              <ul
+                id="reader-search-listbox"
+                role="listbox"
+                aria-label={L.suggestionsLabel}
+                className="max-h-72 overflow-y-auto rounded-xl border border-white/15 bg-[#141021]/95 p-1.5 shadow-2xl backdrop-blur-md"
+              >
+                {suggestions.map((s, i) => (
+                  <li key={s.key} role="option" aria-selected={i === activeIdx}>
+                    <button
+                      id={`reader-search-opt-${i}`}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applySuggestion(s)}
+                      onMouseEnter={() => setActiveIdx(i)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition active:scale-[0.99] ${
+                        i === activeIdx
+                          ? isNature
+                            ? "bg-emerald-400/15 text-emerald-100"
+                            : "bg-gold-500/15 text-gold-100"
+                          : "text-gold-50/90 hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="min-w-0 truncate font-medium">
+                        {s.label}
+                      </span>
+                      <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/60">
+                        {s.sub}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                {suggestions.length === 0 && !textMode && (
+                  <li className="px-3 py-3 text-center text-xs text-gold-200/60">
+                    {L.noResults}
+                  </li>
+                )}
+                {textMode && (
+                  <>
+                    <li
+                      aria-hidden
+                      className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50"
+                    >
+                      {L.relatedVerses}
+                    </li>
+                    {textLoading && textResults.length === 0 && (
+                      <li className="space-y-2 px-3 py-2" aria-live="polite">
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="h-9 animate-pulse rounded-lg bg-white/10"
+                          />
+                        ))}
+                        <span className="sr-only">{L.searchingVerses}</span>
+                      </li>
+                    )}
+                    {textResults.map((hit, j) => {
+                      const i = suggestions.length + j;
+                      return (
+                        <li key={hit.ref} role="option" aria-selected={i === activeIdx}>
+                          <button
+                            id={`reader-search-text-${j}`}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => applyHit(hit)}
+                            onMouseEnter={() => setActiveIdx(i)}
+                            className={`block w-full rounded-lg px-3 py-2.5 text-left transition active:scale-[0.99] ${
+                              i === activeIdx
+                                ? isNature
+                                  ? "bg-emerald-400/15"
+                                  : "bg-gold-500/15"
+                                : "hover:bg-white/5"
+                            }`}
+                          >
+                            <span
+                              className={`block text-[11px] font-bold uppercase tracking-wider ${accentText}`}
+                            >
+                              {hit.ref}
+                            </span>
+                            <span className="mt-0.5 block line-clamp-2 text-sm text-gold-50/90">
+                              {hit.text}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {!textLoading && textResults.length === 0 && (
+                      <li className="px-3 py-3 text-center text-xs text-gold-200/60">
+                        {L.noResultsText}
+                      </li>
+                    )}
+                  </>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+        <button
+          type="submit"
+          className={`${chipBase} shrink-0 font-semibold ${accentBorder} ${accentText} hover:bg-white/5`}
+        >
+          {L.search}
+        </button>
+    </form>
+  );
+
+  const stickyBg = isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88";
 
   return (
     <section className="w-full max-w-3xl">
@@ -246,24 +627,34 @@ export function BibleReader() {
         <p className="mt-0.5 text-xs text-gold-100/60 sm:text-sm">{L.subtitle}</p>
       </div>
 
-      <form onSubmit={onSearch} className="mb-4 flex gap-2">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={L.searchPlaceholder}
-          aria-label={L.search}
-          className={`${chipBase} min-w-0 flex-1 border-white/15 text-gold-50 placeholder:text-gold-200/40 focus:outline-none`}
-        />
-        <button
-          type="submit"
-          className={`${chipBase} font-semibold ${accentBorder} ${accentText} hover:bg-white/5`}
+      {stage === "books" ? (
+        <div
+          className={`sticky top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:px-4 md:top-[calc(5rem+env(safe-area-inset-top,0px))] ${stickyBg}`}
         >
-          {L.search}
-        </button>
-      </form>
+          {searchForm}
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTestament(null)}
+              aria-label={L.backToTestaments}
+              title={L.backToTestaments}
+              className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+            >
+              <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
+            </button>
+            <p className={`min-w-0 flex-1 truncate text-sm font-semibold ${accentText}`}>
+              {testamentLabel}
+            </p>
+            <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/60">
+              {L.booksCount(testamentBooks.length)}
+            </span>
+          </div>
+        </div>
+      ) : (
+        searchForm
+      )}
 
-      {stage !== "books" && (
+      {(stage === "chapters" || stage === "text") && (
         <nav className="mb-3 flex items-center gap-2 text-xs" aria-label="breadcrumb">
           <button
             type="button"
@@ -283,31 +674,55 @@ export function BibleReader() {
         </nav>
       )}
 
+      {stage === "testaments" && (
+        <div className="space-y-3">
+          <p className={`text-sm font-semibold ${accentText}`}>{L.chooseTestament}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {testamentCards.map((tc) => (
+              <button
+                key={tc.key}
+                type="button"
+                onClick={() => selectTestament(tc.key)}
+                className={`${chipBase} flex items-center gap-3 border-white/10 p-4 text-left ${accentHover}`}
+              >
+                <span
+                  className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 ring-1 ring-inset ring-white/10 ${accentText}`}
+                >
+                  <i className={`${tc.icon} text-lg`} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-gold-50/95">
+                    {tc.label}
+                  </span>
+                  <span className="block text-xs text-gold-200/60">
+                    {L.booksCount(tc.count)}
+                  </span>
+                </span>
+                <i className="fa-solid fa-chevron-right shrink-0 text-xs text-gold-200/50" aria-hidden />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {stage === "books" && (
         <div className="space-y-6">
           <p className={`text-sm font-semibold ${accentText}`}>{L.chooseBook}</p>
-          {bookGroups.map((group) => (
-            <div key={group.label}>
-              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-gold-200/50">
-                {group.label}
-              </h2>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {group.list.map((b) => (
-                  <button
-                    key={b.usfm}
-                    type="button"
-                    onClick={() => selectBook(b)}
-                    className={`${chipBase} flex items-center justify-between gap-1 border-white/10 text-left text-gold-50/90 ${accentHover}`}
-                  >
-                    <span className="min-w-0 truncate">{bookLabel(b, lang)}</span>
-                    <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/50">
-                      {b.chapters}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {testamentBooks.map((b) => (
+              <button
+                key={b.usfm}
+                type="button"
+                onClick={() => selectBook(b)}
+                className={`${chipBase} flex items-center justify-between gap-1 border-white/10 text-left text-gold-50/90 ${accentHover}`}
+              >
+                <span className="min-w-0 truncate">{bookLabel(b, lang)}</span>
+                <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/50">
+                  {b.chapters}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -336,7 +751,11 @@ export function BibleReader() {
         <article
           className={`rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`}
         >
-          <header className="mb-3 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+          <header
+            className={`sticky top-[calc(4.5rem+env(safe-area-inset-top,0px))] z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:-mx-6 sm:px-6 md:top-[calc(5rem+env(safe-area-inset-top,0px))] ${
+              isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88"
+            }`}
+          >
             <h2 className={`font-display text-lg font-semibold ${accentText}`}>
               {data?.label ?? `${bookLabel(book, lang)} ${chapter}`}
             </h2>
@@ -418,7 +837,7 @@ export function BibleReader() {
               )}
               <div className="space-y-1.5 leading-relaxed">
                 {data.verses.map((v) => (
-                  <div key={v.n}>
+                  <div key={v.n} className="group relative">
                     {v.heading && (
                       <p
                         className={`mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider ${accentText}`}
@@ -429,6 +848,10 @@ export function BibleReader() {
                     <p
                       id={`v-${v.n}`}
                       onClick={() => onVerseClick(v.n)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        openVerseMenu(e.clientX, e.clientY, v);
+                      }}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
@@ -438,7 +861,7 @@ export function BibleReader() {
                         }
                       }}
                       aria-pressed={highlight === v.n}
-                      className={`cursor-pointer rounded-lg px-2 py-1 text-[15px] transition-colors sm:text-base ${
+                      className={`cursor-pointer rounded-lg px-2 py-1 pr-9 text-[15px] transition-colors sm:text-base md:pr-2 ${
                         highlight === v.n
                           ? isNature
                             ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-inset ring-emerald-400/40"
@@ -451,6 +874,15 @@ export function BibleReader() {
                       </sup>
                       {v.text}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => openVerseSheet(v)}
+                      aria-label={L.verseOptions}
+                      title={L.verseOptions}
+                      className="focus-ring absolute top-1/2 right-0 inline-flex h-9 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-gold-200/70 transition hover:bg-white/5 hover:text-gold-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                    >
+                      <i className="fa-solid fa-ellipsis-vertical text-sm" aria-hidden />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -466,6 +898,43 @@ export function BibleReader() {
 
       {stage === "text" && (
         <p className="mt-3 text-center text-xs text-gold-200/50">{L.verseHint}</p>
+      )}
+
+      {menuVerse && book && chapter && popoverPos && (
+        <VerseContextMenu
+          x={popoverPos.x}
+          y={popoverPos.y}
+          lang={lang}
+          sanctuary={sanctuary}
+          verseRefLabel={`${bookLabel(book, lang)} ${chapter}:${menuVerse.n}`}
+          verseText={menuVerse.text}
+          verseUrl={`${window.location.origin}${window.location.pathname}?lang=${lang}&ref=${encodeURIComponent(
+            `${book.es} ${chapter}:${menuVerse.n}`.toLowerCase()
+          )}`}
+          onClose={closeVerseMenu}
+        />
+      )}
+      {menuVerse && book && chapter && !popoverPos && (
+        <VerseMenuSheet
+          isOpen
+          lang={lang}
+          sanctuary={sanctuary}
+          verseRefLabel={`${bookLabel(book, lang)} ${chapter}:${menuVerse.n}`}
+          verseText={menuVerse.text}
+          verseUrl={`${window.location.origin}${window.location.pathname}?lang=${lang}&ref=${encodeURIComponent(
+            `${book.es} ${chapter}:${menuVerse.n}`.toLowerCase()
+          )}`}
+          onClose={closeVerseMenu}
+        />
+      )}
+      {squareVerse && book && chapter && (
+        <VerseSquareImage
+          text={squareVerse.text}
+          refLabel={`${bookLabel(book, lang)} ${chapter}:${squareVerse.n}`}
+          seedKey={`${book.usfm}.${chapter}.${squareVerse.n}`}
+          sanctuary={sanctuary}
+          footerText={lang === "es" ? "Refugio Celestial" : "Celestial Refuge"}
+        />
       )}
     </section>
   );

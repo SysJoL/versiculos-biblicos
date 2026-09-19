@@ -1,4 +1,4 @@
-import { normalizeBookName } from "../domain/refParser";
+import { findBookByName, normalizeBookName, splitRefQuery } from "../domain/refParser";
 
 export interface CatalogBook {
   usfm: string;
@@ -85,19 +85,127 @@ export function findCatalogBook(usfm: string): CatalogBook | undefined {
 }
 
 export function searchCatalogBooks(query: string): CatalogBook | null {
-  const q = normalizeBookName(query);
-  if (!q) return null;
-  const exact = BOOKS.find(
-    (b) => normalizeBookName(b.es) === q || normalizeBookName(b.en) === q
-  );
-  if (exact) return exact;
-  return (
-    BOOKS.find(
-      (b) =>
-        normalizeBookName(b.es).startsWith(q) ||
-        normalizeBookName(b.en).startsWith(q)
-    ) ?? null
-  );
+  const ranked = searchCatalogBooksRanked(query, 1);
+  return ranked[0] ?? null;
+}
+
+function isSubsequence(q: string, target: string): boolean {
+  if (!q) return false;
+  let i = 0;
+  for (const ch of target) {
+    if (ch === q[i]) {
+      i += 1;
+      if (i >= q.length) return true;
+    }
+  }
+  return i >= q.length;
+}
+
+function scoreTarget(q: string, target: string): number {
+  if (!q || !target) return -1;
+  if (target === q) return 100;
+  if (target.startsWith(q)) return 90;
+  const words = target.split(" ");
+  if (words.some((w) => w.startsWith(q))) return 80;
+  if (target.includes(q)) return 70;
+  if (q.length >= 2 && isSubsequence(q, target.replace(/[^a-z0-9]/g, ""))) return 55;
+  return -1;
+}
+
+export function searchCatalogBooksRanked(query: string, limit = 7): CatalogBook[] {
+  const q = normalizeBookName(query).replace(/\./g, "");
+  if (!q) return [];
+  const scored: { book: CatalogBook; score: number }[] = [];
+  for (const b of BOOKS) {
+    const targets = [
+      normalizeBookName(b.es),
+      normalizeBookName(b.en),
+      b.usfm.toLowerCase(),
+    ];
+    let best = -1;
+    for (const t of targets) {
+      const s = scoreTarget(q, t);
+      if (s > best) best = s;
+    }
+    // Bonus: la query con número ("1 jn") debe preferir libros numerados.
+    if (best >= 0 && /^[123]/.test(q) && /^[123]/.test(targets[0] ?? "") === false) {
+      // sin ajuste, el ranking por score ya lo maneja
+    }
+    if (best >= 0) scored.push({ book: b, score: best });
+  }
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const la = a.book.es.length + a.book.en.length;
+    const lb = b.book.es.length + b.book.en.length;
+    if (la !== lb) return la - lb;
+    return BOOKS.indexOf(a.book) - BOOKS.indexOf(b.book);
+  });
+  return scored.slice(0, limit).map((s) => s.book);
+}
+
+export type RefSuggestion = {
+  book: CatalogBook;
+  chapter?: number;
+  verse?: number;
+  verseStr: string;
+  label: string;
+  sub: string;
+  key: string;
+  exact: boolean;
+};
+
+export function getRefSuggestions(
+  raw: string,
+  lang: "es" | "en" = "es",
+  limit = 7
+): RefSuggestion[] {
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!trimmed) return [];
+  const parts = splitRefQuery(trimmed);
+  if (!parts.bookQuery) return [];
+
+  // 1) Coincidencia exacta por alias (ej: "jn", "sal", "1 jn") tiene prioridad.
+  const exactCode = findBookByName(parts.bookQuery);
+  let candidates: CatalogBook[];
+  if (exactCode) {
+    const exactBook = findCatalogBook(exactCode);
+    const rest = searchCatalogBooksRanked(parts.bookQuery, limit + 3).filter(
+      (b) => b.usfm !== exactCode
+    );
+    candidates = exactBook ? [exactBook, ...rest] : rest;
+  } else {
+    candidates = searchCatalogBooksRanked(parts.bookQuery, 20);
+  }
+  if (!candidates.length) return [];
+
+  const chapterNum = parts.chapter;
+  const hasChapter = parts.chapterStr !== "" && chapterNum !== undefined;
+  const filtered = hasChapter
+    ? candidates.filter((b) => chapterNum! >= 1 && chapterNum! <= b.chapters)
+    : candidates;
+
+  // Si el capítulo no existe en ningún candidato, muestra los libros igual
+  // para que el usuario corrija (ej: "ap 30").
+  const list = (filtered.length ? filtered : candidates).slice(0, limit);
+
+  return list.map((book) => {
+    const name = lang === "es" ? book.es : book.en;
+    let label = name;
+    if (hasChapter) label += ` ${chapterNum}`;
+    if (parts.hasColon) label += `:${parts.verseStr}`;
+    const key = `${book.usfm}-${parts.chapterStr || "0"}-${parts.verseStr || ""}`;
+    const chaptersShort = lang === "es" ? "cap." : "ch.";
+    return {
+      book,
+      chapter: hasChapter ? chapterNum : undefined,
+      verse: parts.verse,
+      verseStr: parts.verseStr,
+      label,
+      sub: `${book.chapters} ${chaptersShort}`,
+      key,
+      exact: list.length === 1 && !!exactCode,
+    };
+  });
 }
 
 export function bookLabel(book: CatalogBook, lang: "es" | "en"): string {
