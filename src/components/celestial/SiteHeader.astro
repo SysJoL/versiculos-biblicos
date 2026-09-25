@@ -4,18 +4,32 @@ import MoodBar from "@/components/selectors/MoodBar.astro";
 import ConnectionModeBadge from "@/components/celestial/ConnectionModeBadge.astro";
 import type { Lang, Mood } from "@/lib/domain/types";
 
-const { currentLang, currentMood } = Astro.props;
+interface Props {
+  currentLang: Lang;
+  currentMood: Mood;
+  showMoodBar?: boolean;
+  showReaderLink?: boolean;
+  showFavoritesLink?: boolean;
+}
+
+const { currentLang, currentMood, showMoodBar = true, showReaderLink = true, showFavoritesLink = true } = Astro.props;
+const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
 ---
 
 <header
   data-site-header
   class="refugio-sticky-nav fixed top-0 right-0 left-0 z-50 border-b border-gold-500/20 bg-transparent pt-[env(safe-area-inset-top,0px)] backdrop-blur-md supports-[backdrop-filter]:bg-black/[0.04]"
-  aria-label="Categoría e idioma"
+  aria-label={showMoodBar ? "Categoría e idioma" : "Idioma"}
 >
   <div
     class="relative mx-auto flex min-h-[2.875rem] w-full max-w-[1600px] flex-row items-center gap-3 px-3 py-3 sm:min-h-12 sm:gap-4 sm:px-5 sm:py-3.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-4 lg:gap-x-8 lg:px-10 lg:py-4"
   >
-    <div class="hidden min-w-0 md:flex md:items-center md:gap-2" aria-hidden="true">
+    <div class="hidden min-w-0 md:flex md:items-center md:gap-2">
+      <a
+        href={homeHref}
+        class="focus-ring flex min-w-0 items-center gap-2 rounded-xl"
+        aria-label="Ir al inicio"
+      >
       <div class="relative h-10 w-10 lg:h-11 lg:w-11">
         <img
           data-site-brand-dove
@@ -37,10 +51,16 @@ const { currentLang, currentMood } = Astro.props;
         <span class="block">Versículos</span>
         <span class="block">Bíblicos</span>
       </p>
+      </a>
     </div>
 
     <!-- Móvil: logo + nombre de app -->
     <div class="shrink-0 md:hidden flex items-center gap-2">
+      <a
+        href={homeHref}
+        class="focus-ring flex items-center gap-2 rounded-xl"
+        aria-label="Ir al inicio"
+      >
       <div class="relative h-9 w-9">
         <img
           data-site-brand-dove
@@ -62,9 +82,11 @@ const { currentLang, currentMood } = Astro.props;
         <span class="block">Versículos</span>
         <span class="block">Bíblicos</span>
       </p>
+      </a>
     </div>
 
     <!-- Móvil: filtro alineado a la derecha | PC: columna central -->
+    {showMoodBar && (
     <div
       class="ml-auto min-w-0 flex-none md:ml-0 md:col-span-1 md:col-start-2 md:flex md:max-w-[min(100%,58rem)] md:flex-none md:justify-self-center"
     >
@@ -74,12 +96,35 @@ const { currentLang, currentMood } = Astro.props;
         <MoodBar currentLang={currentLang} currentMood={currentMood} />
       </div>
     </div>
+    )}
 
     <!-- Móvil: switch a la derecha junto al filtro | PC: tercera columna -->
-    <div class="shrink-0 flex items-center gap-2 md:col-start-3 md:justify-self-end">
+    <div class:list={["shrink-0 flex items-center gap-2 md:col-start-3 md:justify-self-end", !showMoodBar && "ml-auto md:ml-0"]}>
       <div class="hidden sm:block">
         <ConnectionModeBadge />
       </div>
+      {showReaderLink && (
+      <a
+        href="/lectura"
+        class="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        aria-label="Lectura bíblica"
+        title="Lectura bíblica"
+      >
+        <i class="fa-solid fa-book-open text-sm text-gold-300/95" aria-hidden="true"></i>
+        <span class="sr-only">Lectura bíblica</span>
+      </a>
+      )}
+      {showFavoritesLink && (
+      <a
+        href="/favoritos"
+        class="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        aria-label="Versículos favoritos"
+        title="Versículos favoritos"
+      >
+        <i class="fa-solid fa-heart text-sm text-gold-300/95" aria-hidden="true"></i>
+        <span class="sr-only">Versículos favoritos</span>
+      </a>
+      )}
       <LanguageBar currentMood={currentMood} />
     </div>
   </div>
@@ -91,13 +136,25 @@ const { currentLang, currentMood } = Astro.props;
     if (!root) return;
     const mql = window.matchMedia("(min-width: 768px)");
 
+    let lastY = window.scrollY;
+
     const onScroll = () => {
+      const y = window.scrollY;
+
       // On mobile we keep the header logo stable to avoid flicker.
       if (!mql.matches) {
         root.classList.remove("is-scrolled");
-        return;
+      } else {
+        root.classList.toggle("is-scrolled", y > 26);
       }
-      root.classList.toggle("is-scrolled", window.scrollY > 26);
+
+      if (y < 80 || y <= lastY) {
+        root.classList.remove("nav-hidden");
+      } else if (y > 120) {
+        root.classList.add("nav-hidden");
+      }
+
+      lastY = y;
     };
 
     onScroll();
@@ -107,6 +164,20 @@ const { currentLang, currentMood } = Astro.props;
 </script>
 
 <style>
+  [data-site-header] {
+    transition: transform 0.25s ease;
+  }
+  [data-site-header].nav-hidden {
+    transform: translateY(calc(-100% - env(safe-area-inset-top, 0px)));
+  }
+  [data-site-header]:focus-within {
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-site-header] {
+      transition: none;
+    }
+  }
   @media (min-width: 768px) {
     [data-site-header].is-scrolled [data-site-brand-dove] {
       opacity: 1;

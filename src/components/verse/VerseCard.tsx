@@ -6,18 +6,14 @@ import {
 import { displayCategory } from "@/lib/i18n/categories";
 import { UI } from "@/lib/i18n/labels";
 import { showToast } from "@/lib/ui/toast";
+import {
+  getStoredSanctuary,
+  type SanctuaryTheme,
+} from "@/lib/ui/sanctuary";
 import { useCallback, useEffect, useState } from "react";
 import { VerseCardView } from "./VerseCardView";
 import { DownloadButton } from "./DownloadButton";
 import { VerseActionsMenu } from "./VerseActionsMenu";
-
-type SanctuaryTheme = "celestial" | "nature";
-
-function readSanctuaryTheme(): SanctuaryTheme {
-  if (typeof window === "undefined") return "celestial";
-  const stored = localStorage.getItem("refugio-sanctuary");
-  return stored === "nature" ? "nature" : "celestial";
-}
 
 const MOODS: Mood[] = [
   "all",
@@ -98,7 +94,7 @@ export function VerseCard({ initialFromBuild }: Props) {
 
   // Sync sanctuary theme from localStorage + custom event
   useEffect(() => {
-    setSanctuary(readSanctuaryTheme());
+    setSanctuary(getStoredSanctuary());
     const handler = (e: Event) => {
       const theme = (e as CustomEvent<{ theme: SanctuaryTheme }>).detail?.theme;
       if (theme === "celestial" || theme === "nature") setSanctuary(theme);

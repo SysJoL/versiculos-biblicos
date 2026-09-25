@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { showToast } from "@/lib/ui/toast";
-
-type Theme = "celestial" | "nature";
-
-const LS_KEY = "refugio-celestial:sanctuary-theme";
+import {
+  SANCTUARY_LS_KEY,
+  type SanctuaryTheme,
+} from "@/lib/ui/sanctuary";
 
 export default function VisualSanctuarySwitcher() {
-  const [theme, setTheme] = useState<Theme>("celestial");
+  const [theme, setTheme] = useState<SanctuaryTheme>("celestial");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(LS_KEY) as Theme | null;
+      const stored = localStorage.getItem(SANCTUARY_LS_KEY);
       if (stored === "nature" || stored === "celestial") {
         setTheme(stored);
         // Synchronously dispatch once to align background with storage on mount
@@ -28,10 +28,10 @@ export default function VisualSanctuarySwitcher() {
   }, []);
 
   const toggle = () => {
-    const next: Theme = theme === "celestial" ? "nature" : "celestial";
+    const next: SanctuaryTheme = theme === "celestial" ? "nature" : "celestial";
     setTheme(next);
     if (typeof window !== "undefined") {
-      localStorage.setItem(LS_KEY, next);
+      localStorage.setItem(SANCTUARY_LS_KEY, next);
       window.dispatchEvent(
         new CustomEvent("refugio-sanctuary-changed", {
           detail: { theme: next },

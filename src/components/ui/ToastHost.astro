@@ -24,6 +24,19 @@
       info: "fa-circle-info",
     };
 
+    const recent = new Map();
+    function shouldShow(key, ms) {
+      const now = Date.now();
+      if (now - (recent.get(key) || 0) < ms) return false;
+      recent.set(key, now);
+      if (recent.size > 40) {
+        for (const [k, t] of recent) {
+          if (now - t > 60000) recent.delete(k);
+        }
+      }
+      return true;
+    }
+
     function createToast(payload) {
       const kind = payload?.kind || "info";
       const message = (payload?.message || "").trim();
@@ -34,6 +47,7 @@
       wrap.className = `pointer-events-auto flex w-full items-start gap-2 rounded-xl border px-3 py-2 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-sm ${styleMap[kind] || styleMap.info}`;
       wrap.innerHTML = `<i class="fa-solid ${iconMap[kind] || iconMap.info} mt-0.5 opacity-90" aria-hidden="true"></i><span class="leading-snug">${message}</span>`;
       host.appendChild(wrap);
+      while (host.children.length > 3) host.firstElementChild?.remove();
 
       setTimeout(() => {
         wrap.classList.add("opacity-0", "translate-y-2", "transition-all", "duration-300");
@@ -45,18 +59,68 @@
       createToast(ev.detail || {});
     });
 
-    window.addEventListener("error", function () {
-      createToast({
-        kind: "error",
-        message: "Ocurrió un error inesperado en la aplicación.",
-      });
+    function isBenign(text) {
+      if (!text) return true;
+      return (
+        /ResizeObserver loop/i.test(text) ||
+        /Script error\.?$/i.test(text) ||
+        /AbortError/i.test(text) ||
+        /The play\(\) request was interrupted/i.test(text)
+      );
+    }
+
+    // Errores de recursos (img/css/script): solo consola, nunca toast.
+    window.addEventListener(
+      "error",
+      function (ev) {
+        const t = ev?.target;
+        if (t && (t.src || t.href)) {
+          if (typeof console !== "undefined")
+            console.warn("[refugio] recurso no cargó:", t.src || t.href);
+        }
+      },
+      true
+    );
+
+    // Excepciones JS reales: log con detalle + toast con dedupe.
+    window.addEventListener("error", function (ev) {
+      const msg = ev?.message || "";
+      if (isBenign(msg)) return;
+      if (typeof console !== "undefined")
+        console.error(
+          "[refugio] error:",
+          msg,
+          "\narchivo:",
+          ev?.filename,
+          ev?.lineno ? `${ev.lineno}:${ev.colno}` : "",
+          "\nstack:",
+          ev?.error?.stack || "(sin stack)"
+        );
+      if (shouldShow(`err:${msg}`, 8000)) {
+        createToast({
+          kind: "error",
+          message: "Ocurrió un error inesperado en la aplicación.",
+        });
+      }
     });
 
-    window.addEventListener("unhandledrejection", function () {
-      createToast({
-        kind: "error",
-        message: "Falló una operación del sistema. Intenta nuevamente.",
-      });
+    window.addEventListener("unhandledrejection", function (ev) {
+      const reason = ev?.reason;
+      const name = reason?.name || "";
+      if (name === "AbortError" || name === "NavigationError") return;
+      const msg =
+        typeof reason === "string"
+          ? reason
+          : reason?.message || String(reason ?? "");
+      if (isBenign(msg)) return;
+      if (typeof console !== "undefined")
+        console.error("[refugio] promesa sin capturar:", reason);
+      if (shouldShow(`rej:${msg}`, 8000)) {
+        createToast({
+          kind: "error",
+          message: "Falló una operación del sistema. Intenta nuevamente.",
+        });
+      }
     });
   })();
 </script>

@@ -1,0 +1,69 @@
+<div class="flex justify-center">
+  <div
+    id="refugio-streak-badge"
+    class="hidden items-center gap-1.5 rounded-full border border-orange-400/35 bg-black/40 px-3 py-1 text-xs font-semibold text-orange-200/95 ring-1 ring-inset ring-white/5 backdrop-blur-sm"
+    role="status"
+    aria-live="polite"
+  >
+    <i class="fa-solid fa-fire text-orange-300" aria-hidden="true"></i>
+    <span data-streak-count>1</span>
+    <span class="i18n-es font-medium text-orange-200/75">días seguidos</span>
+    <span class="i18n-en hidden font-medium text-orange-200/75" aria-hidden="true">day streak</span>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const badge = document.getElementById("refugio-streak-badge");
+    if (!badge) return;
+    const LS_KEY = "refugio.streak.v1";
+
+    const dayKey = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    let state = null;
+    try {
+      const today = new Date();
+      const todayKey = dayKey(today);
+      const yesterdayKey = dayKey(new Date(today.getTime() - 24 * 60 * 60 * 1000));
+      let stored = null;
+      try {
+        stored = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+      } catch {
+        stored = null;
+      }
+      if (stored && stored.last === todayKey) {
+        state = { count: Math.max(1, stored.count || 0), incremented: false };
+      } else {
+        const count = stored && stored.last === yesterdayKey ? (stored.count || 0) + 1 : 1;
+        try {
+          localStorage.setItem(LS_KEY, JSON.stringify({ last: todayKey, count }));
+        } catch {
+          // sin almacenamiento: se muestra sin persistir
+        }
+        state = { count, incremented: count > 1 };
+      }
+    } catch {
+      return;
+    }
+
+    const countEl = badge.querySelector("[data-streak-count]");
+    if (countEl) countEl.textContent = String(state.count);
+    badge.classList.remove("hidden");
+    badge.classList.add("inline-flex");
+
+    if (state.incremented) {
+      const isEn = document.documentElement.getAttribute("data-url-lang") === "en";
+      const message = isEn
+        ? `🔥 ${state.count}-day streak! Keep meditating.`
+        : `🔥 ¡Racha de ${state.count} días! Sigue meditando.`;
+      window.dispatchEvent(
+        new CustomEvent("refugio:toast", { detail: { message, kind: "success", durationMs: 3200 } })
+      );
+    }
+  })();
+</script>
