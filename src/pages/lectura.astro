@@ -2,6 +2,7 @@
 import BaseLayout from "@/components/layout/BaseLayout.astro";
 import CosmicBackground from "@/components/celestial/CosmicBackground";
 import SiteHeader from "@/components/celestial/SiteHeader.astro";
+import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import VisualSanctuarySwitcher from "@/components/celestial/VisualSanctuarySwitcher";
 import { BibleReader } from "@/components/reader/BibleReader";
 ---
@@ -12,7 +13,7 @@ import { BibleReader } from "@/components/reader/BibleReader";
   lang="es"
 >
   <CosmicBackground client:idle />
-  <SiteHeader currentLang="es" currentMood="all" />
+  <SiteHeader currentLang="es" currentMood="all" showMoodBar={false} showReaderLink={false} />
   <main
     class="pointer-events-auto relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3 pb-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:px-4 sm:pt-[calc(5.25rem+env(safe-area-inset-top,0px))] md:px-6 md:pt-[calc(6rem+env(safe-area-inset-top,0px))] lg:px-8"
   >
@@ -30,5 +31,6 @@ import { BibleReader } from "@/components/reader/BibleReader";
       </a>
     </footer>
   </main>
+  <UrlParamsSync />
   <VisualSanctuarySwitcher client:load />
 </BaseLayout>
