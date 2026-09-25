@@ -25,10 +25,18 @@ const { currentMood } = Astro.props;
       name="lang"
       value="es"
       data-lang-btn="es"
-      class="focus-ring inline-flex min-h-[2.25rem] min-w-[2.35rem] items-center justify-center rounded-lg px-2 text-[10px] font-semibold tracking-wide text-gold-100/90 transition hover:bg-white/5 sm:min-h-9 sm:min-w-[2.5rem] sm:px-2.5 sm:text-xs"
+      class="focus-ring inline-flex min-h-[2.25rem] min-w-[3.25rem] items-center justify-center gap-1.5 rounded-lg px-2 text-[10px] font-semibold tracking-wide text-gold-100/90 transition hover:bg-white/5 sm:min-h-9 sm:min-w-[3.5rem] sm:px-2.5 sm:text-xs"
       title="Español"
       aria-pressed="false"
     >
+      <svg
+        class="h-3 w-4 shrink-0 rounded-[2px] ring-1 ring-inset ring-white/20"
+        viewBox="0 0 20 14"
+        aria-hidden="true"
+      >
+        <rect width="20" height="14" fill="#AA151B" />
+        <rect y="3.5" width="20" height="7" fill="#F1BF00" />
+      </svg>
       ES
     </button>
     <button
@@ -36,10 +44,39 @@ const { currentMood } = Astro.props;
       name="lang"
       value="en"
       data-lang-btn="en"
-      class="focus-ring inline-flex min-h-[2.25rem] min-w-[2.35rem] items-center justify-center rounded-lg px-2 text-[10px] font-semibold tracking-wide text-gold-100/90 transition hover:bg-white/5 sm:min-h-9 sm:min-w-[2.5rem] sm:px-2.5 sm:text-xs"
+      class="focus-ring inline-flex min-h-[2.25rem] min-w-[3.25rem] items-center justify-center gap-1.5 rounded-lg px-2 text-[10px] font-semibold tracking-wide text-gold-100/90 transition hover:bg-white/5 sm:min-h-9 sm:min-w-[3.5rem] sm:px-2.5 sm:text-xs"
       title="English"
       aria-pressed="false"
     >
+      <svg
+        class="h-3 w-4 shrink-0 rounded-[2px] ring-1 ring-inset ring-white/20"
+        viewBox="0 0 20 14"
+        aria-hidden="true"
+      >
+        <rect width="20" height="14" fill="#fff" />
+        <g fill="#B31942">
+          <rect y="0" width="20" height="1.08" />
+          <rect y="2.15" width="20" height="1.08" />
+          <rect y="4.31" width="20" height="1.08" />
+          <rect y="6.46" width="20" height="1.08" />
+          <rect y="8.62" width="20" height="1.08" />
+          <rect y="10.77" width="20" height="1.08" />
+          <rect y="12.92" width="20" height="1.08" />
+        </g>
+        <rect width="9" height="7.54" fill="#0A3161" />
+        <g fill="#fff">
+          <circle cx="1.5" cy="1.4" r="0.55" />
+          <circle cx="4.5" cy="1.4" r="0.55" />
+          <circle cx="7.5" cy="1.4" r="0.55" />
+          <circle cx="3" cy="3.1" r="0.55" />
+          <circle cx="6" cy="3.1" r="0.55" />
+          <circle cx="1.5" cy="4.8" r="0.55" />
+          <circle cx="4.5" cy="4.8" r="0.55" />
+          <circle cx="7.5" cy="4.8" r="0.55" />
+          <circle cx="3" cy="6.3" r="0.55" />
+          <circle cx="6" cy="6.3" r="0.55" />
+        </g>
+      </svg>
       EN
     </button>
   </form>
