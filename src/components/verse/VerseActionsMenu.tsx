@@ -8,6 +8,12 @@ import {
 } from "./DownloadButton";
 import { showToast } from "@/lib/ui/toast";
 import {
+  FAVORITES_EVENT,
+  favoriteKey,
+  isFavorite,
+  toggleFavorite,
+} from "@/lib/ui/favorites";
+import {
   getStoredSanctuary,
   type SanctuaryTheme,
 } from "@/lib/ui/sanctuary";
@@ -42,6 +48,8 @@ export function VerseActionsMenu({
   const [isMobile, setIsMobile] = useState(false);
   const [canCopyImage, setCanCopyImage] = useState(false);
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
+  const favKey = favoriteKey(lang, verseRef);
+  const [isFav, setIsFav] = useState(() => isFavorite(favKey));
 
   useEffect(() => {
     setSanctuary(getStoredSanctuary());
@@ -52,6 +60,13 @@ export function VerseActionsMenu({
     window.addEventListener("refugio-sanctuary-changed", handler);
     return () => window.removeEventListener("refugio-sanctuary-changed", handler);
   }, []);
+
+  useEffect(() => {
+    setIsFav(isFavorite(favoriteKey(lang, verseRef)));
+    const sync = () => setIsFav(isFavorite(favoriteKey(lang, verseRef)));
+    window.addEventListener(FAVORITES_EVENT, sync);
+    return () => window.removeEventListener(FAVORITES_EVENT, sync);
+  }, [lang, verseRef]);
 
   useEffect(() => {
     if (
@@ -72,6 +87,10 @@ export function VerseActionsMenu({
             download: "Descargar PNG",
             copyImage: "Copiar imagen",
             copy: "Copiar texto",
+            favorite: "Guardar en favoritos",
+            unfavorite: "Quitar de favoritos",
+            favAdded: "Guardado en favoritos.",
+            favRemoved: "Quitado de favoritos.",
             close: "Cerrar",
           }
         : {
@@ -80,12 +99,33 @@ export function VerseActionsMenu({
             download: "Download PNG",
             copyImage: "Copy image",
             copy: "Copy text",
+            favorite: "Save to favorites",
+            unfavorite: "Remove from favorites",
+            favAdded: "Saved to favorites.",
+            favRemoved: "Removed from favorites.",
             close: "Close",
           },
     [lang],
   );
 
   const shareText = `“${verseText}” — ${verseRef}`;
+
+  const onToggleFavorite = () => {
+    if (busy) return;
+    const verseUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/lectura?lang=${lang}&ref=${encodeURIComponent(verseRef)}`
+        : "";
+    const added = toggleFavorite({
+      key: favKey,
+      ref: verseRef,
+      text: verseText,
+      lang,
+      url: verseUrl,
+    });
+    setIsFav(added);
+    showToast(added ? t.favAdded : t.favRemoved, "success", 2000);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -423,6 +463,17 @@ export function VerseActionsMenu({
             <i className={`fa-solid fa-copy w-4 ${dropdownIconColor}`} aria-hidden />
             {t.copy}
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onToggleFavorite}
+            disabled={d}
+            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gold-100/95 transition disabled:opacity-60 ${dropdownItemHover}`}
+            aria-pressed={isFav}
+          >
+            <i className={`fa-${isFav ? "solid" : "regular"} fa-heart w-4 ${isFav ? "text-rose-300" : dropdownIconColor}`} aria-hidden />
+            {isFav ? t.unfavorite : t.favorite}
+          </button>
         </div>
       ) : null}
       <BottomSheet
@@ -475,6 +526,17 @@ export function VerseActionsMenu({
           >
             <i className={`fa-solid fa-copy w-4 ${dropdownIconColor}`} aria-hidden />
             {t.copy}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onToggleFavorite}
+            disabled={d}
+            className={`flex w-full items-center gap-2 rounded-xl border px-4 py-4 text-left text-sm font-medium text-gold-100/95 transition disabled:opacity-60 ${sheetItemBorder}`}
+            aria-pressed={isFav}
+          >
+            <i className={`fa-${isFav ? "solid" : "regular"} fa-heart w-4 ${isFav ? "text-rose-300" : dropdownIconColor}`} aria-hidden />
+            {isFav ? t.unfavorite : t.favorite}
           </button>
         </div>
       </BottomSheet>

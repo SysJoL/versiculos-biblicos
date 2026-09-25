@@ -75,6 +75,25 @@ export function BibleReader() {
   const [errorReason, setErrorReason] = useState<string | undefined>(undefined);
   const [nonce, setNonce] = useState(0);
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
+  // Tamaño de letra del pasaje: 5 pasos, persistido en localStorage.
+  const FONT_STEPS = ["text-sm", "text-[15px]", "text-base", "text-lg", "text-xl"];
+  const FONT_LS_KEY = "refugio.reader.fontStep";
+  const [fontStep, setFontStep] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const n = Number(window.localStorage.getItem(FONT_LS_KEY));
+    return Number.isInteger(n) && n >= 0 && n < 5 ? n : 1;
+  });
+  const changeFont = useCallback((delta: number) => {
+    setFontStep((prev) => {
+      const next = Math.min(4, Math.max(0, prev + delta));
+      try {
+        window.localStorage.setItem(FONT_LS_KEY, String(next));
+      } catch {
+        /* almacenamiento no disponible */
+      }
+      return next;
+    });
+  }, []);
   // El header del sitio se oculta al bajar (clase `nav-hidden`); las barras
   // sticky del lector suben al top para ocupar su lugar y bajan cuando regresa.
   const [siteNavHidden, setSiteNavHidden] = useState(false);
@@ -780,6 +799,26 @@ export function BibleReader() {
             <div className="flex gap-1">
               <button
                 type="button"
+                onClick={() => changeFont(-1)}
+                disabled={fontStep <= 0}
+                aria-label={lang === "es" ? "Reducir tamaño de letra" : "Decrease font size"}
+                title={lang === "es" ? "Reducir tamaño de letra" : "Decrease font size"}
+                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-xs font-bold text-gold-200 transition hover:bg-white/5 disabled:opacity-40"
+              >
+                <span aria-hidden>A-</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => changeFont(1)}
+                disabled={fontStep >= FONT_STEPS.length - 1}
+                aria-label={lang === "es" ? "Aumentar tamaño de letra" : "Increase font size"}
+                title={lang === "es" ? "Aumentar tamaño de letra" : "Increase font size"}
+                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-xs font-bold text-gold-200 transition hover:bg-white/5 disabled:opacity-40"
+              >
+                <span aria-hidden>A+</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => goChapter(-1)}
                 disabled={!chapter || chapter <= 1 || loading}
                 aria-label={L.prevChapter}
@@ -879,7 +918,7 @@ export function BibleReader() {
                         }
                       }}
                       aria-pressed={highlight === v.n}
-                      className={`cursor-pointer rounded-lg px-2 py-1 pr-9 text-[15px] transition-colors sm:text-base md:pr-2 ${
+                      className={`cursor-pointer rounded-lg px-2 py-1 pr-9 transition-colors md:pr-2 ${FONT_STEPS[fontStep] ?? "text-[15px]"} ${
                         highlight === v.n
                           ? isNature
                             ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-inset ring-emerald-400/40"

@@ -32,10 +32,12 @@ export function VerseContextMenu({
     t,
     busy,
     canCopyImage,
+    isFav,
     onExport,
     onCopyImage,
     onCopyVerse,
     onCopyLink,
+    onToggleFavorite,
     onShare,
   } = useVerseMenuActions({ lang, verseRefLabel, verseText, verseUrl, onClose });
 
@@ -149,6 +151,19 @@ export function VerseContextMenu({
           <i className={`fa-solid fa-link text-sm ${iconColor}`} aria-hidden />
         </span>
         {t.copyLink}
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={onToggleFavorite}
+        disabled={d}
+        className={itemClass}
+        aria-pressed={isFav}
+      >
+        <span className={iconChip}>
+          <i className={`fa-${isFav ? "solid" : "regular"} fa-heart text-sm ${isFav ? "text-rose-300" : iconColor}`} aria-hidden />
+        </span>
+        {isFav ? t.unfavorite : t.favorite}
       </button>
       <button
         type="button"

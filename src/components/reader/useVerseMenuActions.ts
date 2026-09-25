@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import type { Lang } from "@/lib/domain/types";
 import { showToast } from "@/lib/ui/toast";
 import {
+  FAVORITES_EVENT,
+  favoriteKey,
+  isFavorite,
+  toggleFavorite,
+} from "@/lib/ui/favorites";
+import {
   buildVerseImageFilename,
   captureVerseBlobById,
   downloadVerseCaptureById,
@@ -41,6 +47,10 @@ export type VerseMenuLabels = {
   copyLink: string;
   share: string;
   close: string;
+  favorite: string;
+  unfavorite: string;
+  favAdded: string;
+  favRemoved: string;
   imageSaved: string;
   imageFailed: string;
   imageCopied: string;
@@ -69,6 +79,10 @@ function labelsFor(lang: Lang, verseRefLabel: string): VerseMenuLabels {
         linkCopied: "Enlace copiado",
         linkFailed: "No se pudo copiar.",
         shareFailed: "No se pudo compartir.",
+        favorite: "Guardar en favoritos",
+        unfavorite: "Quitar de favoritos",
+        favAdded: "Guardado en favoritos.",
+        favRemoved: "Quitado de favoritos.",
       }
     : {
         title: verseRefLabel,
@@ -86,6 +100,10 @@ function labelsFor(lang: Lang, verseRefLabel: string): VerseMenuLabels {
         linkCopied: "Link copied",
         linkFailed: "Could not copy.",
         shareFailed: "Could not share.",
+        favorite: "Save to favorites",
+        unfavorite: "Remove from favorites",
+        favAdded: "Saved to favorites.",
+        favRemoved: "Removed from favorites.",
       };
 }
 
@@ -110,6 +128,16 @@ export function useVerseMenuActions({
 }: Args) {
   const [busy, setBusy] = useState(false);
   const [canCopyImage, setCanCopyImage] = useState(false);
+  const favKey = favoriteKey(lang, verseRefLabel);
+  const [isFav, setIsFav] = useState(() => isFavorite(favKey));
+
+  // Re-sincroniza si cambia el versículo o si otra vista modificó favoritos.
+  useEffect(() => {
+    setIsFav(isFavorite(favoriteKey(lang, verseRefLabel)));
+    const sync = () => setIsFav(isFavorite(favoriteKey(lang, verseRefLabel)));
+    window.addEventListener(FAVORITES_EVENT, sync);
+    return () => window.removeEventListener(FAVORITES_EVENT, sync);
+  }, [lang, verseRefLabel]);
 
   useEffect(() => {
     if (
@@ -187,8 +215,20 @@ export function useVerseMenuActions({
     }
   };
 
-  const onShare = async () => {
+  const onToggleFavorite = () => {
     if (busy) return;
+    const added = toggleFavorite({
+      key: favKey,
+      ref: verseRefLabel,
+      text: verseText,
+      lang,
+      url: verseUrl,
+    });
+    setIsFav(added);
+    showToast(added ? t.favAdded : t.favRemoved, "success", 2000);
+  };
+
+  const onShare = async () => {    if (busy) return;
     setBusy(true);
     try {
       if (navigator.share) {
@@ -215,10 +255,12 @@ export function useVerseMenuActions({
     t,
     busy,
     canCopyImage,
+    isFav,
     onExport,
     onCopyImage,
     onCopyVerse,
     onCopyLink,
+    onToggleFavorite,
     onShare,
   };
 }

@@ -6,9 +6,15 @@ interface Props {
   title: string;
   description?: string;
   lang?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  ogUrl?: string;
 }
 
-const { title, description = "Meditación bíblica con versículo del día y descarga de imagen.", lang = "es" } = Astro.props;
+const { title, description = "Meditación bíblica con versículo del día y descarga de imagen.", lang = "es", ogTitle, ogDescription, ogImage = "/img/logo-refugio-celestial-best.png", ogUrl } = Astro.props;
+const shareTitle = ogTitle ?? title;
+const shareDescription = ogDescription ?? description;
 
 const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://bible-api.com; frame-ancestors 'none'; form-action 'self'";
 Astro.response.headers.set("content-security-policy", CSP);
@@ -24,6 +30,16 @@ Astro.response.headers.set("content-security-policy", CSP);
     />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#0b0f24" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Versículos Bíblicos" />
+    <meta property="og:title" content={shareTitle} />
+    <meta property="og:description" content={shareDescription} />
+    <meta property="og:image" content={ogImage} />
+    {ogUrl && <meta property="og:url" content={ogUrl} />}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={shareTitle} />
+    <meta name="twitter:description" content={shareDescription} />
+    <meta name="twitter:image" content={ogImage} />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/img/logo-refugio-celestial-best.png" />
     <link rel="apple-touch-icon" href="/img/logo-refugio-celestial-best.png" />

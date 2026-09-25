@@ -9,9 +9,10 @@ interface Props {
   currentMood: Mood;
   showMoodBar?: boolean;
   showReaderLink?: boolean;
+  showFavoritesLink?: boolean;
 }
 
-const { currentLang, currentMood, showMoodBar = true, showReaderLink = true } = Astro.props;
+const { currentLang, currentMood, showMoodBar = true, showReaderLink = true, showFavoritesLink = true } = Astro.props;
 const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
 ---
 
@@ -111,6 +112,17 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
       >
         <i class="fa-solid fa-book-open text-sm text-gold-300/95" aria-hidden="true"></i>
         <span class="sr-only">Lectura bíblica</span>
+      </a>
+      )}
+      {showFavoritesLink && (
+      <a
+        href="/favoritos"
+        class="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        aria-label="Versículos favoritos"
+        title="Versículos favoritos"
+      >
+        <i class="fa-solid fa-heart text-sm text-gold-300/95" aria-hidden="true"></i>
+        <span class="sr-only">Versículos favoritos</span>
       </a>
       )}
       <LanguageBar currentMood={currentMood} />

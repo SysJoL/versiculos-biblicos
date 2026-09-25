@@ -41,6 +41,34 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         lang: "es",
+        shortcuts: [
+          {
+            name: "Versículo del día",
+            short_name: "Versículo",
+            description: "Medita el versículo de hoy",
+            url: "/",
+            icons: [
+              {
+                src: "/img/logo-refugio-celestial-best.png",
+                sizes: "192x192",
+                type: "image/png",
+              },
+            ],
+          },
+          {
+            name: "Lectura bíblica",
+            short_name: "Lectura",
+            description: "Lee capítulos completos de la Biblia",
+            url: "/lectura",
+            icons: [
+              {
+                src: "/img/logo-refugio-celestial-best.png",
+                sizes: "192x192",
+                type: "image/png",
+              },
+            ],
+          },
+        ],
         icons: [
           {
             src: "/img/logo-refugio-celestial-best.png",
