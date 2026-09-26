@@ -1,6 +1,7 @@
 ---
 import LanguageBar from "@/components/selectors/LanguageBar.astro";
 import MoodBar from "@/components/selectors/MoodBar.astro";
+import MobileBottomSheet from "@/components/ui/MobileBottomSheet.astro";
 import ConnectionModeBadge from "@/components/celestial/ConnectionModeBadge.astro";
 import type { Lang, Mood } from "@/lib/domain/types";
 
@@ -14,6 +15,9 @@ interface Props {
 
 const { currentLang, currentMood, showMoodBar = true, showReaderLink = true, showFavoritesLink = true } = Astro.props;
 const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
+const favHref = `/favoritos?lang=${currentLang}&mood=${currentMood}`;
+const menuTitle = currentLang === "es" ? "Idioma y favoritos" : "Language & favorites";
+const menuClose = currentLang === "es" ? "Cerrar" : "Close";
 ---
 
 <header
@@ -22,7 +26,7 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
   aria-label={showMoodBar ? "Categoría e idioma" : "Idioma"}
 >
   <div
-    class="relative mx-auto flex min-h-[2.875rem] w-full max-w-[1600px] flex-row items-center gap-3 px-3 py-3 sm:min-h-12 sm:gap-4 sm:px-5 sm:py-3.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-4 lg:gap-x-8 lg:px-10 lg:py-4"
+    class="relative mx-auto flex min-h-[2.875rem] w-full max-w-[1600px] flex-row items-center gap-2 px-3 py-3 sm:min-h-12 sm:gap-4 sm:px-5 sm:py-3.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-4 lg:gap-x-8 lg:px-10 lg:py-4"
   >
     <div class="hidden min-w-0 md:flex md:items-center md:gap-2">
       <a
@@ -98,15 +102,15 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
     </div>
     )}
 
-    <!-- Móvil: switch a la derecha junto al filtro | PC: tercera columna -->
-    <div class:list={["shrink-0 flex items-center gap-2 md:col-start-3 md:justify-self-end", !showMoodBar && "ml-auto md:ml-0"]}>
+    <!-- Móvil: solo filtro + biblia + menú | PC: tercera columna completa -->
+    <div class:list={["shrink-0 flex min-w-0 items-center gap-2 md:col-start-3 md:justify-self-end", !showMoodBar && "ml-auto md:ml-0"]}>
       <div class="hidden sm:block">
         <ConnectionModeBadge />
       </div>
       {showReaderLink && (
       <a
         href="/lectura"
-        class="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        class="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
         aria-label="Lectura bíblica"
         title="Lectura bíblica"
       >
@@ -117,7 +121,7 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
       {showFavoritesLink && (
       <a
         href="/favoritos"
-        class="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        class="focus-ring hidden h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55 md:inline-flex"
         aria-label="Versículos favoritos"
         title="Versículos favoritos"
       >
@@ -125,9 +129,97 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
         <span class="sr-only">Versículos favoritos</span>
       </a>
       )}
-      <LanguageBar currentMood={currentMood} />
+      <div class="hidden md:block">
+        <LanguageBar currentMood={currentMood} />
+      </div>
+      <button
+        type="button"
+        id="refugio-more-open"
+        data-more-open
+        class="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55 md:hidden"
+        aria-label={menuTitle}
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="refugio-more-sheet"
+        title={menuTitle}
+      >
+        <i class="fa-solid fa-bars text-sm text-gold-300/95" aria-hidden="true"></i>
+        <span class="sr-only">{menuTitle}</span>
+      </button>
     </div>
   </div>
+
+  <MobileBottomSheet
+    id="refugio-more-sheet"
+    title={menuTitle}
+    closeLabel={menuClose}
+    maxHeightClass="max-h-[72dvh]"
+  >
+    <form method="get" action="" class="col-span-full">
+      <input type="hidden" name="mood" value={currentMood} />
+      <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-200/60">
+        <span class="i18n-es">Idioma</span>
+        <span class="i18n-en hidden" aria-hidden="true">Language</span>
+      </p>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          type="submit"
+          name="lang"
+          value="es"
+          data-lang-btn="es"
+          class="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-gold-500/25 bg-white/[0.02] px-3 text-sm font-semibold text-gold-100 transition hover:border-gold-500/40 hover:bg-white/[0.04]"
+          aria-pressed="false"
+        >
+          <svg class="h-3 w-4 shrink-0 rounded-[2px] ring-1 ring-inset ring-white/20" viewBox="0 0 20 14" aria-hidden="true">
+            <rect width="20" height="14" fill="#AA151B" />
+            <rect y="3.5" width="20" height="7" fill="#F1BF00" />
+          </svg>
+          ES
+        </button>
+        <button
+          type="submit"
+          name="lang"
+          value="en"
+          data-lang-btn="en"
+          class="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-gold-500/25 bg-white/[0.02] px-3 text-sm font-semibold text-gold-100 transition hover:border-gold-500/40 hover:bg-white/[0.04]"
+          aria-pressed="false"
+        >
+          <svg class="h-3 w-4 shrink-0 rounded-[2px] ring-1 ring-inset ring-white/20" viewBox="0 0 20 14" aria-hidden="true">
+            <rect width="20" height="14" fill="#fff" />
+            <rect width="9" height="7.54" fill="#0A3161" />
+            <g fill="#B31942">
+              <rect y="0" width="20" height="1.08" />
+              <rect y="2.15" width="20" height="1.08" />
+              <rect y="4.31" width="20" height="1.08" />
+              <rect y="6.46" width="20" height="1.08" />
+              <rect y="8.62" width="20" height="1.08" />
+              <rect y="10.77" width="20" height="1.08" />
+              <rect y="12.92" width="20" height="1.08" />
+            </g>
+          </svg>
+          EN
+        </button>
+      </div>
+    </form>
+    {showFavoritesLink && (
+    <a
+      href={favHref}
+      class="focus-ring col-span-full inline-flex min-h-12 items-center justify-between rounded-xl border border-gold-500/25 bg-white/[0.02] px-3 py-2 text-left transition hover:border-gold-500/40 hover:bg-white/[0.04]"
+    >
+      <span class="inline-flex items-center gap-2">
+        <i class="fa-solid fa-heart text-[0.78rem] text-gold-300/90" aria-hidden="true"></i>
+        <span class="text-[13px] font-medium">
+          <span class="i18n-es">Versículos favoritos</span>
+          <span class="i18n-en hidden" aria-hidden="true">Favorite verses</span>
+        </span>
+      </span>
+      <span class="inline-flex items-center gap-1.5 text-xs text-gold-200/70">
+        <span data-more-fav-count class="rounded-full border border-gold-500/30 px-2 py-0.5 tabular-nums">0</span>
+        <i class="fa-solid fa-chevron-right text-[0.7rem]" aria-hidden="true"></i>
+      </span>
+    </a>
+    )}
+  </MobileBottomSheet>
 </header>
 
 <script is:inline>
@@ -160,6 +252,69 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     mql.addEventListener?.("change", onScroll);
+
+    // Mobile "more" sheet: idioma + favoritos (evita desborde del switch ES/EN).
+    const openBtn = document.getElementById("refugio-more-open");
+    const sheet = document.getElementById("refugio-more-sheet");
+    const panel = document.getElementById("refugio-more-sheet-panel");
+    const closeBtn = document.getElementById("refugio-more-sheet-close");
+    if (openBtn && sheet && panel && closeBtn) {
+      if (sheet.parentElement !== document.body) document.body.appendChild(sheet);
+      let prevOverflow = "";
+      let prevTouch = "";
+      const isHidden = () => sheet.classList.contains("hidden");
+      const open = () => {
+        sheet.classList.remove("hidden");
+        sheet.classList.add("flex");
+        requestAnimationFrame(() => {
+          panel.classList.remove("translate-y-full");
+          panel.classList.add("translate-y-0");
+        });
+        sheet.setAttribute("aria-hidden", "false");
+        openBtn.setAttribute("aria-expanded", "true");
+        prevOverflow = document.body.style.overflow;
+        prevTouch = document.body.style.touchAction;
+        document.body.style.overflow = "hidden";
+        document.body.style.touchAction = "none";
+        refreshFavCount();
+      };
+      const close = () => {
+        panel.classList.remove("translate-y-0");
+        panel.classList.add("translate-y-full");
+        sheet.classList.remove("flex");
+        sheet.classList.add("hidden");
+        sheet.setAttribute("aria-hidden", "true");
+        openBtn.setAttribute("aria-expanded", "false");
+        document.body.style.overflow = prevOverflow;
+        document.body.style.touchAction = prevTouch;
+      };
+      openBtn.addEventListener("click", () => (isHidden() ? open() : close()));
+      closeBtn.addEventListener("click", close);
+      sheet.addEventListener("click", (ev) => {
+        if (ev.target === sheet) close();
+      });
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && !isHidden()) close();
+      });
+      window.addEventListener("pagehide", () => {
+        document.body.style.overflow = prevOverflow;
+        document.body.style.touchAction = prevTouch;
+      });
+    }
+
+    function refreshFavCount() {
+      const badge = document.querySelector("[data-more-fav-count]");
+      if (!badge) return;
+      try {
+        const raw = localStorage.getItem("refugio.favorites.v1");
+        const arr = raw ? JSON.parse(raw) : [];
+        badge.textContent = String(Array.isArray(arr) ? arr.length : 0);
+      } catch {
+        badge.textContent = "0";
+      }
+    }
+    refreshFavCount();
+    window.addEventListener("refugio-favorites-changed", refreshFavCount);
   })();
 </script>
 

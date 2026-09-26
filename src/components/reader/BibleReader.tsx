@@ -894,10 +894,10 @@ export function BibleReader() {
               )}
               <div className="space-y-1.5 leading-relaxed">
                 {data.verses.map((v) => (
-                  <div key={v.n} className="group relative">
+                  <div key={v.n} className="group grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-1">
                     {v.heading && (
                       <p
-                        className={`mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider ${accentText}`}
+                        className={`col-span-2 mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider ${accentText}`}
                       >
                         {v.heading}
                       </p>
@@ -918,7 +918,7 @@ export function BibleReader() {
                         }
                       }}
                       aria-pressed={highlight === v.n}
-                      className={`cursor-pointer rounded-lg px-2 py-1 pr-9 transition-colors md:pr-2 ${FONT_STEPS[fontStep] ?? "text-[15px]"} ${
+                      className={`cursor-pointer rounded-lg px-2 py-1 transition-colors ${FONT_STEPS[fontStep] ?? "text-[15px]"} ${
                         highlight === v.n
                           ? isNature
                             ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-inset ring-emerald-400/40"
@@ -936,7 +936,7 @@ export function BibleReader() {
                       onClick={() => openVerseSheet(v)}
                       aria-label={L.verseOptions}
                       title={L.verseOptions}
-                      className="focus-ring absolute top-1/2 right-0 inline-flex h-9 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-gold-200/70 transition hover:bg-white/5 hover:text-gold-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                      className="focus-ring inline-flex h-8 w-8 items-center justify-center self-center justify-self-center rounded-lg text-gold-200/70 transition hover:bg-white/5 hover:text-gold-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 md:focus-visible:opacity-100"
                     >
                       <i className="fa-solid fa-ellipsis-vertical text-sm" aria-hidden />
                     </button>

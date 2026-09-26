@@ -28,4 +28,21 @@
   .focus-ring {
     @apply focus-visible:ring-2 focus-visible:ring-gold-400/80 focus-visible:outline-none focus:outline-none;
   }
+
+  .refugio-thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.35) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .refugio-thin-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .refugio-thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .refugio-thin-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(212, 175, 55, 0.35);
+  }
 }

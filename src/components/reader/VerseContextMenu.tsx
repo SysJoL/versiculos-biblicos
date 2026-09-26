@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Lang } from "@/lib/domain/types";
 import type { SanctuaryTheme } from "@/lib/ui/sanctuary";
 import { useVerseMenuActions } from "./useVerseMenuActions";
+import { VerseActionItems } from "./VerseActionItems";
 
 type Props = {
   x: number;
@@ -66,117 +67,48 @@ export function VerseContextMenu({
   const panelBg = isNature
     ? "border-emerald-500/30 bg-[#081208]/95"
     : "border-gold-500/35 bg-[#0f1228]/95";
-  const itemHover = isNature ? "hover:bg-emerald-500/10" : "hover:bg-gold-500/10";
+  const itemBorder = isNature
+    ? "border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/10"
+    : "border-gold-500/30 bg-gold-500/5 hover:bg-gold-500/10";
   const iconColor = isNature ? "text-emerald-300/90" : "text-gold-300/90";
 
-  // Mantiene el popover dentro de la ventana.
-  const width = 264;
+  // Popover en grid 3x3: más ancho, sin scroll interno.
+  const width = 400;
   const left = Math.max(8, Math.min(x, window.innerWidth - width - 8));
-  const top = Math.max(8, Math.min(y, window.innerHeight - 340));
-
-  const d = busy;
-
-  const itemClass = `flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm font-medium text-gold-100/95 transition disabled:opacity-60 ${itemHover}`;
-  const iconChip =
-    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-inset ring-white/10";
+  const top = Math.max(8, Math.min(y, window.innerHeight - 380));
 
   return (
     <div
       ref={boxRef}
       role="menu"
       aria-label={t.title}
-      className={`fixed z-[90] rounded-xl border p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.55)] backdrop-blur-md ${panelBg}`}
+      className={`fixed z-[90] rounded-xl border p-3 shadow-[0_14px_40px_rgba(0,0,0,0.55)] backdrop-blur-md ${panelBg}`}
       style={{
         left,
         top,
         width,
         maxHeight: window.innerHeight - 16,
-        overflowY: "auto",
+        overflow: "hidden",
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-200/60">
+      <p className="px-1 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-200/60">
         {t.title}
       </p>
-      <button
-        type="button"
-        role="menuitem"
-        onClick={onExport}
-        disabled={d}
-        className={itemClass}
-      >
-        <span className={iconChip}>
-          {busy ? (
-            <i className="fa-solid fa-spinner fa-spin text-sm" aria-hidden />
-          ) : (
-            <i className={`fa-solid fa-download text-sm ${iconColor}`} aria-hidden />
-          )}
-        </span>
-        {t.exportImage}
-      </button>
-      {canCopyImage ? (
-        <button
-          type="button"
-          role="menuitem"
-          onClick={onCopyImage}
-          disabled={d}
-          className={itemClass}
-        >
-          <span className={iconChip}>
-            <i className={`fa-solid fa-file-image text-sm ${iconColor}`} aria-hidden />
-          </span>
-          {t.copyImage}
-        </button>
-      ) : null}
-      <button
-        type="button"
-        role="menuitem"
-        onClick={onCopyVerse}
-        disabled={d}
-        className={itemClass}
-      >
-        <span className={iconChip}>
-          <i className={`fa-solid fa-quote-left text-sm ${iconColor}`} aria-hidden />
-        </span>
-        {t.copyVerse}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        onClick={onCopyLink}
-        disabled={d}
-        className={itemClass}
-      >
-        <span className={iconChip}>
-          <i className={`fa-solid fa-link text-sm ${iconColor}`} aria-hidden />
-        </span>
-        {t.copyLink}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        onClick={onToggleFavorite}
-        disabled={d}
-        className={itemClass}
-        aria-pressed={isFav}
-      >
-        <span className={iconChip}>
-          <i className={`fa-${isFav ? "solid" : "regular"} fa-heart text-sm ${isFav ? "text-rose-300" : iconColor}`} aria-hidden />
-        </span>
-        {isFav ? t.unfavorite : t.favorite}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        onClick={onShare}
-        disabled={d}
-        className={itemClass}
-      >
-        <span className={iconChip}>
-          <i className={`fa-solid fa-share-nodes text-sm ${iconColor}`} aria-hidden />
-        </span>
-        {t.share}
-      </button>
+      <VerseActionItems
+        t={t}
+        busy={busy}
+        canCopyImage={canCopyImage}
+        isFav={isFav}
+        iconColor={iconColor}
+        itemBorder={itemBorder}
+        onExport={onExport}
+        onCopyImage={onCopyImage}
+        onCopyVerse={onCopyVerse}
+        onCopyLink={onCopyLink}
+        onToggleFavorite={onToggleFavorite}
+        onShare={onShare}
+      />
     </div>
   );
 }
