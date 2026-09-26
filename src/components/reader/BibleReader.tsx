@@ -18,6 +18,7 @@ import {
 import { showToast } from "@/lib/ui/toast";
 import { VerseContextMenu } from "./VerseContextMenu";
 import { VerseMenuSheet } from "./VerseMenuSheet";
+import { MobileVerseQuickBar } from "./MobileVerseQuickBar";
 import { VerseSquareImage } from "./VerseSquareImage";
 
 type VerseSegment = { n: number; text: string; heading?: string };
@@ -797,6 +798,20 @@ export function BibleReader() {
               {data?.label ?? `${bookLabel(book, lang)} ${chapter}`}
             </h2>
             <div className="flex gap-1">
+              {data && (data.verses.find((v) => v.n === highlight) ?? data.verses[0]) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const v = data.verses.find((vv) => vv.n === highlight) ?? data.verses[0];
+                    if (v) openVerseSheet(v);
+                  }}
+                  aria-label={L.verseOptions}
+                  title={L.verseOptions}
+                  className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-gold-500/45 bg-gold-500/10 text-gold-200 transition hover:bg-gold-500/20 md:hidden"
+                >
+                  <i className="fa-solid fa-share-nodes text-xs" aria-hidden />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => changeFont(-1)}
@@ -894,10 +909,10 @@ export function BibleReader() {
               )}
               <div className="space-y-1.5 leading-relaxed">
                 {data.verses.map((v) => (
-                  <div key={v.n} className="group grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-1">
+                  <div key={v.n} className="group grid grid-cols-1 items-center gap-1 md:grid-cols-[minmax(0,1fr)_2rem]">
                     {v.heading && (
                       <p
-                        className={`col-span-2 mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider ${accentText}`}
+                        className={`mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider md:col-span-2 ${accentText}`}
                       >
                         {v.heading}
                       </p>
@@ -936,7 +951,7 @@ export function BibleReader() {
                       onClick={() => openVerseSheet(v)}
                       aria-label={L.verseOptions}
                       title={L.verseOptions}
-                      className="focus-ring inline-flex h-8 w-8 items-center justify-center self-center justify-self-center rounded-lg text-gold-200/70 transition hover:bg-white/5 hover:text-gold-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 md:focus-visible:opacity-100"
+                      className="focus-ring hidden h-8 w-8 items-center justify-center self-center justify-self-center rounded-lg text-gold-200/70 transition hover:bg-white/5 hover:text-gold-100 md:inline-flex md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 md:focus-visible:opacity-100"
                     >
                       <i className="fa-solid fa-ellipsis-vertical text-sm" aria-hidden />
                     </button>
@@ -955,6 +970,29 @@ export function BibleReader() {
 
       {stage === "text" && (
         <p className="mt-3 text-center text-xs text-gold-200/50">{L.verseHint}</p>
+      )}
+
+      {stage === "text" && book && chapter && data && !loading && !error && highlight != null && (
+        (() => {
+          const v = data.verses.find((vv) => vv.n === highlight);
+          if (!v) return null;
+          return (
+            <>
+              <div className="h-20 md:hidden" aria-hidden />
+              <MobileVerseQuickBar
+                lang={lang}
+                sanctuary={sanctuary}
+                verseRefLabel={`${bookLabel(book, lang)} ${chapter}:${v.n}`}
+                verseText={v.text}
+                verseUrl={`${window.location.origin}${window.location.pathname}?lang=${lang}&ref=${encodeURIComponent(
+                  `${book.es} ${chapter}:${v.n}`.toLowerCase()
+                )}`}
+                onMore={() => openVerseSheet(v)}
+                onClear={() => setHighlight(undefined)}
+              />
+            </>
+          );
+        })()
       )}
 
       {menuVerse && book && chapter && popoverPos && (
