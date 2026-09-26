@@ -3,6 +3,7 @@ import BaseLayout from "@/components/layout/BaseLayout.astro";
 import CosmicBackground from "@/components/celestial/CosmicBackground";
 import AppHeader from "@/components/celestial/AppHeader.astro";
 import SiteHeader from "@/components/celestial/SiteHeader.astro";
+import StreakBadge from "@/components/celestial/StreakBadge.astro";
 import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import NotificationOptIn from "@/components/ui/NotificationOptIn.astro";
 import PwaInstallPrompt from "@/components/ui/PwaInstallPrompt.astro";
@@ -15,12 +16,18 @@ const buildLang: Lang = "es";
 const buildMood: Mood = "all";
 const initial = getSsgInitialVerse(buildLang, buildMood);
 const year = new Date().getFullYear();
+// Vista previa al compartir: el versículo inicial (SSR, español) como OG.
+const ogVerseText = initial.text.length > 160 ? `${initial.text.slice(0, 157)}…` : initial.text;
+const ogTitle = `${initial.ref} — Versículos Bíblicos`;
+const ogDescription = `“${ogVerseText}” Medita, ora y descarga el versículo del día.`;
 ---
 
 <BaseLayout
   title="Versículos Bíblicos — Meditación bíblica"
   description="Medita, ora y descarga un versículo. Español e inglés, categorías y API bíblica con respaldo local."
   lang="es"
+  ogTitle={ogTitle}
+  ogDescription={ogDescription}
 >
   <CosmicBackground client:idle />
   <SiteHeader currentLang="es" currentMood="all" />
@@ -29,6 +36,9 @@ const year = new Date().getFullYear();
   >
     <div class="shrink-0 border-b border-gold-500/5 pb-3 sm:pb-4">
       <AppHeader />
+    </div>
+    <div class="mt-2 shrink-0">
+      <StreakBadge />
     </div>
     <div
       class="mt-0 flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2 sm:py-3"

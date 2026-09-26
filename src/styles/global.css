@@ -28,4 +28,35 @@
   .focus-ring {
     @apply focus-visible:ring-2 focus-visible:ring-gold-400/80 focus-visible:outline-none focus:outline-none;
   }
+
+  .refugio-thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.35) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .refugio-thin-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .refugio-thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .refugio-thin-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(212, 175, 55, 0.35);
+  }
+
+  /* Barras sticky del lector: cristal en reposo, fondo sólido al fijarse
+     para que el texto del pasaje no se transparente por detrás. */
+  .reader-sticky.is-stuck {
+    background-color: var(--reader-sticky-solid, #0b0f24);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reader-sticky {
+      transition: none;
+    }
+  }
 }

@@ -3,6 +3,7 @@
 
 interface ImportMetaEnv {
   readonly PUBLIC_BIBLE_API_BASE?: string;
+  readonly PUBLIC_PASSAGE_FORMAT_VERSION?: string;
 }
 
 interface ImportMeta {
