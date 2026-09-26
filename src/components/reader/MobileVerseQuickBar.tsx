@@ -13,9 +13,9 @@ type Props = {
 };
 
 /**
- * Barra rápida móvil: aparece al tocar un versículo.
+ * Barra rápida del versículo: aparece al seleccionar un versículo (clic o toque).
  * Compartir (avión) · imagen · favorito · más (sheet completo).
- * Solo móvil (el padre la monta con md:hidden).
+ * Móvil: ancho completo abajo · PC: centrada con ancho máximo.
  */
 export function MobileVerseQuickBar({
   lang,
@@ -47,7 +47,7 @@ export function MobileVerseQuickBar({
 
   return (
     <div
-      className="fixed inset-x-3 bottom-3 z-40 md:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 md:inset-x-0 md:bottom-6 md:mx-auto md:w-full md:max-w-md md:px-4"
       style={{ paddingBottom: "env(safe-area-inset-bottom,0px)" }}
       role="toolbar"
       aria-label={verseRefLabel}

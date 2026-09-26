@@ -109,6 +109,33 @@ export function BibleReader() {
     return () => obs.disconnect();
   }, []);
 
+  // Las barras sticky del lector son cristal en reposo y fondo sólido
+  // cuando quedan fijas (clase `is-stuck` vía sentinel + observer),
+  // para que el texto no se transparente por detrás.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const sentinels = Array.from(
+      document.querySelectorAll("[data-reader-sentinel]")
+    );
+    if (!sentinels.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const bar = (entry.target as HTMLElement).nextElementSibling;
+          if (!bar || !bar.hasAttribute("data-reader-sticky")) continue;
+          const stuck =
+            !entry.isIntersecting && entry.boundingClientRect.top < 0;
+          bar.classList.toggle("is-stuck", stuck);
+        }
+      },
+      { threshold: 0 }
+    );
+    sentinels.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+    // `stage` deriva de estos valores; se lista desglosado porque se
+    // declara después de este efecto (evita TDZ en el array de deps).
+  }, [testament, book?.usfm, chapter, data, loading]);
+
   const L = UI[lang].reader;
   const isNature = sanctuary === "nature";
   // Offset de las barras sticky: debajo del header del sitio, o pegadas al
@@ -666,8 +693,12 @@ export function BibleReader() {
       </div>
 
       {stage === "books" ? (
+        <>
+        <div data-reader-sentinel className="h-px" aria-hidden />
         <div
-          className={`sticky ${stickyTop} z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:px-4 ${stickyBg}`}
+          data-reader-sticky
+          style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
+          className={`reader-sticky sticky ${stickyTop} z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:px-4 ${stickyBg}`}
         >
           {searchForm}
           <div className="mb-3 flex items-center gap-2">
@@ -688,6 +719,7 @@ export function BibleReader() {
             </span>
           </div>
         </div>
+        </>
       ) : (
         searchForm
       )}
@@ -789,8 +821,11 @@ export function BibleReader() {
         <article
           className={`rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`}
         >
+          <div data-reader-sentinel className="h-px" aria-hidden />
           <header
-            className={`sticky ${stickyTop} z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
+            data-reader-sticky
+            style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
+            className={`reader-sticky sticky ${stickyTop} z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
               isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88"
             }`}
           >
@@ -798,20 +833,6 @@ export function BibleReader() {
               {data?.label ?? `${bookLabel(book, lang)} ${chapter}`}
             </h2>
             <div className="flex gap-1">
-              {data && (data.verses.find((v) => v.n === highlight) ?? data.verses[0]) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const v = data.verses.find((vv) => vv.n === highlight) ?? data.verses[0];
-                    if (v) openVerseSheet(v);
-                  }}
-                  aria-label={L.verseOptions}
-                  title={L.verseOptions}
-                  className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-gold-500/45 bg-gold-500/10 text-gold-200 transition hover:bg-gold-500/20 md:hidden"
-                >
-                  <i className="fa-solid fa-share-nodes text-xs" aria-hidden />
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => changeFont(-1)}
@@ -909,10 +930,10 @@ export function BibleReader() {
               )}
               <div className="space-y-1.5 leading-relaxed">
                 {data.verses.map((v) => (
-                  <div key={v.n} className="group grid grid-cols-1 items-center gap-1 md:grid-cols-[minmax(0,1fr)_2rem]">
+                  <div key={v.n}>
                     {v.heading && (
                       <p
-                        className={`mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider md:col-span-2 ${accentText}`}
+                        className={`mt-4 mb-1 px-2 text-[11px] font-bold uppercase tracking-wider ${accentText}`}
                       >
                         {v.heading}
                       </p>
@@ -946,15 +967,6 @@ export function BibleReader() {
                       </sup>
                       {v.text}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => openVerseSheet(v)}
-                      aria-label={L.verseOptions}
-                      title={L.verseOptions}
-                      className="focus-ring hidden h-8 w-8 items-center justify-center self-center justify-self-center rounded-lg text-gold-200/70 transition hover:bg-white/5 hover:text-gold-100 md:inline-flex md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 md:focus-visible:opacity-100"
-                    >
-                      <i className="fa-solid fa-ellipsis-vertical text-sm" aria-hidden />
-                    </button>
                   </div>
                 ))}
               </div>
@@ -978,7 +990,7 @@ export function BibleReader() {
           if (!v) return null;
           return (
             <>
-              <div className="h-20 md:hidden" aria-hidden />
+              <div className="h-20" aria-hidden />
               <MobileVerseQuickBar
                 lang={lang}
                 sanctuary={sanctuary}
