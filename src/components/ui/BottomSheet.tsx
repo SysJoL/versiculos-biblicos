@@ -86,15 +86,16 @@ export function BottomSheet({
           <span className={`h-1 w-12 rounded-full transition-colors duration-700 ${handleColor}`} aria-hidden />
         </div>
 
-        <header className={`flex items-center justify-between border-b px-4 pb-2 pt-3 md:pb-3 md:pt-4 ${headerBorder}`}>
-          <h3 className={`w-full text-center font-display text-sm font-semibold uppercase tracking-[0.12em] ${titleColor}`}>
+        <header className={`grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center border-b px-4 pb-2 pt-3 md:pb-3 md:pt-4 ${headerBorder}`}>
+          <span aria-hidden />
+          <h3 className={`min-w-0 truncate text-center font-display text-sm font-semibold uppercase tracking-[0.12em] ${titleColor}`}>
             {title}
           </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label={closeLabel}
-            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-gold-100 transition ${closeBtnBorder}`}
+            className={`inline-flex h-8 w-8 items-center justify-center justify-self-end rounded-full border text-gold-100 transition ${closeBtnBorder}`}
           >
             <i className="fa-solid fa-xmark" aria-hidden />
           </button>
