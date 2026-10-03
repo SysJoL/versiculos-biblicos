@@ -1,0 +1,90 @@
+---
+import type { Lang, Mood } from "@/lib/domain/types";
+import { UI } from "@/lib/i18n/labels";
+
+interface Props {
+  currentLang: Lang;
+  currentMood: Mood;
+}
+
+const { currentLang, currentMood } = Astro.props;
+const L = UI[currentLang].mood;
+
+const moods: { id: Mood; icon: string; descEs: string; descEn: string }[] = [
+  { id: "all", icon: "fa-infinity", descEs: "Todo el maná", descEn: "All manna" },
+  { id: "comfort", icon: "fa-dove", descEs: "Paz en la prueba", descEn: "Peace in trials" },
+  { id: "wisdom", icon: "fa-lightbulb", descEs: "Guía diaria", descEn: "Daily guidance" },
+  { id: "hope", icon: "fa-star", descEs: "Fuerza futura", descEn: "Future strength" },
+  { id: "love", icon: "fa-heart", descEs: "Amor eterno", descEn: "Eternal love" },
+  { id: "repentance", icon: "fa-hands-praying", descEs: "Gracia y perdón", descEn: "Grace & forgiveness" },
+];
+
+const title = currentLang === "es" ? "Categorías" : "Categories";
+const subtitle = currentLang === "es" ? "Elige tu maná" : "Choose your manna";
+---
+
+<aside
+  data-sidebar
+  class="hidden w-[260px] shrink-0 lg:block"
+  aria-label={title}
+>
+  <div class="sticky top-20 overflow-hidden rounded-2xl border border-gold-500/20 bg-black/40 shadow-[0_18px_50px_-18px_rgba(0,0,0,0.8)] ring-1 ring-inset ring-white/5 backdrop-blur-md lg:flex lg:h-full lg:flex-col">
+    <div class="border-b border-gold-500/10 bg-gradient-to-b from-gold-500/10 to-transparent px-4 pb-3 pt-4">
+      <p class="font-display text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-300/90">{title}</p>
+      <p class="mt-0.5 text-xs text-gold-200/60">{subtitle}</p>
+    </div>
+
+    <form method="get" action="" class="flex flex-col gap-1.5 p-3 lg:flex-1">
+      <input type="hidden" name="lang" value={currentLang} />
+      {
+        moods.map((m) => {
+          const isActive = m.id === currentMood;
+          return (
+            <button
+              type="submit"
+              name="mood"
+              value={m.id}
+              data-sidebar-btn={m.id}
+              aria-current={isActive ? "true" : undefined}
+              class:list={[
+                "focus-ring group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all duration-200 active:scale-[0.99]",
+                isActive
+                  ? "border-gold-400/70 bg-gradient-to-r from-gold-500/25 via-gold-500/15 to-transparent text-gold-100 shadow-[0_0_22px_-6px_rgba(212,175,55,0.55)]"
+                  : "border-white/5 bg-white/[0.02] text-gold-100/80 hover:-translate-y-px hover:border-gold-500/35 hover:bg-white/[0.05] hover:text-gold-100 hover:shadow-[0_10px_28px_-14px_rgba(212,175,55,0.5)]",
+              ]}
+            >
+              <span
+                class:list={[
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition",
+                  isActive
+                    ? "border-gold-400/50 bg-gold-500/20 text-gold-200"
+                    : "border-gold-500/20 bg-black/40 text-gold-300/80 group-hover:border-gold-500/40 group-hover:text-gold-200",
+                ]}
+              >
+                <i class={`fa-solid ${m.icon} text-[0.85rem]`} aria-hidden="true" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-[13.5px] font-semibold leading-tight">{L[m.id]}</span>
+                <span class="block truncate text-[11px] leading-tight text-gold-200/55">
+                  {currentLang === "es" ? m.descEs : m.descEn}
+                </span>
+              </span>
+              {isActive ? (
+                <i class="fa-solid fa-circle-check shrink-0 text-sm text-gold-300" aria-hidden="true" />
+              ) : (
+                <i class="fa-solid fa-chevron-right shrink-0 text-[0.65rem] text-gold-300/30 transition group-hover:translate-x-0.5 group-hover:text-gold-300/70" aria-hidden="true" />
+              )}
+              {isActive && <span class="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-gold-200 via-gold-400 to-gold-500" aria-hidden="true" />}
+            </button>
+          );
+        })
+      }
+    </form>
+
+    <div class="border-t border-gold-500/10 px-4 py-2.5">
+      <p class="text-[11px] leading-snug text-gold-200/45">
+        {currentLang === "es" ? "Fijo mientras meditas · cambia sin recargar tu paz" : "Pinned while you meditate · switch in peace"}
+      </p>
+    </div>
+  </div>
+</aside>

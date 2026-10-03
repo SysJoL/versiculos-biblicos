@@ -1,0 +1,144 @@
+---
+import type { Lang, Mood } from "@/lib/domain/types";
+import { UI } from "@/lib/i18n/labels";
+
+interface Props {
+  currentLang: Lang;
+  currentMood: Mood;
+}
+
+const { currentLang, currentMood } = Astro.props;
+const L = UI[currentLang].mood;
+
+const moods: { id: Mood; icon: string }[] = [
+  { id: "all", icon: "fa-infinity" },
+  { id: "comfort", icon: "fa-dove" },
+  { id: "wisdom", icon: "fa-lightbulb" },
+  { id: "hope", icon: "fa-star" },
+  { id: "love", icon: "fa-heart" },
+  { id: "repentance", icon: "fa-hands-praying" },
+];
+
+const current = moods.find((m) => m.id === currentMood) ?? moods[0]!;
+const label = currentLang === "es" ? "Categoría" : "Category";
+---
+
+<div class="w-full lg:hidden" data-category-combobox>
+  <form method="get" action="" id="refugio-combo-form" class="relative w-full">
+    <input type="hidden" name="lang" class="refugio-mood-lang" value={currentLang} />
+    <input type="hidden" name="mood" id="refugio-combo-value" value={currentMood} />
+
+    <button
+      type="button"
+      id="refugio-combo-btn"
+      aria-haspopup="listbox"
+      aria-expanded="false"
+      aria-label={label}
+      class="focus-ring flex w-full items-center gap-2.5 rounded-xl border border-gold-500/35 bg-black/45 py-2.5 pl-3 pr-3 text-left ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/55"
+    >
+      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gold-500/25 bg-gold-500/15 text-gold-300">
+        <i id="refugio-combo-icon" class={`fa-solid ${current.icon} text-sm`} aria-hidden="true" />
+      </span>
+      <span class="min-w-0 flex-1">
+        <span class="block text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-300/60">{label}</span>
+        <span id="refugio-combo-current" class="block truncate text-sm font-semibold text-gold-100">{L[current.id]}</span>
+      </span>
+      <i id="refugio-combo-chevron" class="fa-solid fa-chevron-down text-xs text-gold-300/80 transition-transform duration-200" aria-hidden="true" />
+    </button>
+
+    <div
+      id="refugio-combo-pop"
+      role="listbox"
+      aria-label={label}
+      class="invisible absolute inset-x-0 top-full z-40 mt-2 origin-top scale-[0.98] overflow-hidden rounded-xl border border-gold-500/30 bg-[#0c1129]/97 opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.6)] ring-1 ring-inset ring-white/5 backdrop-blur-md transition-all duration-200"
+    >
+      {
+        moods.map((m) => (
+          <button
+            type="button"
+            role="option"
+            aria-selected={m.id === currentMood ? "true" : "false"}
+            data-combo-option={m.id}
+            data-combo-label={L[m.id]}
+            data-combo-icon={m.icon}
+            class={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition active:scale-[0.99] ${
+              m.id === currentMood
+                ? "bg-gradient-to-r from-gold-500/25 via-gold-500/12 to-transparent font-semibold text-gold-100"
+                : "font-medium text-gold-100/80 hover:bg-white/[0.05] hover:text-gold-100"
+            }`}
+          >
+            <i class={`fa-solid ${m.icon} w-4 shrink-0 text-center text-[0.8rem] text-gold-300/85`} aria-hidden="true" />
+            <span class="flex-1 truncate">{L[m.id]}</span>
+            {m.id === currentMood && (
+              <i class="fa-solid fa-check shrink-0 text-xs text-gold-300" aria-hidden="true" />
+            )}
+          </button>
+        ))
+      }
+    </div>
+  </form>
+</div>
+
+<style>
+  #refugio-combo-pop.is-open {
+    visibility: visible;
+    opacity: 1;
+    transform: scale(1);
+  }
+  #refugio-combo-chevron.is-open {
+    transform: rotate(180deg);
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    const btn = document.getElementById("refugio-combo-btn");
+    const pop = document.getElementById("refugio-combo-pop");
+    const chevron = document.getElementById("refugio-combo-chevron");
+    const form = document.getElementById("refugio-combo-form");
+    const hidden = document.getElementById("refugio-combo-value");
+    if (!btn || !pop || !form || !(hidden instanceof HTMLInputElement)) return;
+
+    const isOpen = () => pop.classList.contains("is-open");
+    const open = () => {
+      pop.classList.add("is-open");
+      chevron?.classList.add("is-open");
+      btn.setAttribute("aria-expanded", "true");
+    };
+    const close = () => {
+      pop.classList.remove("is-open");
+      chevron?.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+    };
+
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (isOpen()) close();
+      else open();
+    });
+    document.addEventListener("click", (ev) => {
+      if (!isOpen()) return;
+      if (pop.contains(ev.target) || btn.contains(ev.target)) return;
+      close();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && isOpen()) {
+        close();
+        btn.focus();
+      }
+    });
+
+    pop.querySelectorAll("[data-combo-option]").forEach((opt) => {
+      opt.addEventListener("click", () => {
+        const v = opt.getAttribute("data-combo-option");
+        if (!v || !(hidden instanceof HTMLInputElement)) return;
+        if (v === hidden.value) {
+          close();
+          return;
+        }
+        hidden.value = v;
+        if (form instanceof HTMLFormElement) form.submit();
+      });
+    });
+  })();
+</script>

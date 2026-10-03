@@ -1,0 +1,240 @@
+---
+interface Props {
+  lang?: string;
+}
+
+const { lang = "es" } = Astro.props;
+const title = lang === "es" ? "REFUGIO CELESTIAL" : "CELESTIAL REFUGE";
+const subtitle = lang === "es" ? "Versículos Bíblicos" : "Bible Verses";
+---
+
+<div
+  data-entry-splash
+  role="presentation"
+  aria-hidden="true"
+  class="fixed inset-0 z-[100] overflow-hidden"
+  style="background:#060612"
+>
+  <div class="splash-panel splash-top" aria-hidden="true"></div>
+  <div class="splash-panel splash-bottom" aria-hidden="true"></div>
+
+  <svg
+    class="splash-wave"
+    viewBox="0 0 1440 90"
+    preserveAspectRatio="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M0,48 C240,90 480,6 720,42 C960,78 1200,12 1440,48 L1440,90 L0,90 Z"
+      fill="rgba(212,175,55,0.16)"
+    />
+    <path
+      d="M0,58 C240,96 480,20 720,52 C960,84 1200,26 1440,58 L1440,90 L0,90 Z"
+      fill="#060612"
+    />
+  </svg>
+
+  <div class="splash-core">
+    <div class="splash-veil" aria-hidden="true"></div>
+    <img
+      src="/img/paloma-top.png"
+      alt=""
+      aria-hidden="true"
+      class="splash-dove"
+      width="112"
+      height="112"
+      fetchpriority="high"
+      decoding="async"
+      onerror="this.style.display='none'"
+    />
+    <p class="splash-title font-display">{title}</p>
+    <p class="splash-subtitle">{subtitle}</p>
+    <div class="splash-bar" aria-hidden="true"><span></span></div>
+  </div>
+</div>
+
+<noscript><style>[data-entry-splash]{display:none !important}</style></noscript>
+
+<style>
+  [data-entry-splash] {
+    pointer-events: auto;
+  }
+  .splash-panel {
+    position: absolute;
+    inset-inline: 0;
+    height: 50.5%;
+    background: #060612;
+    transition: transform 0.8s cubic-bezier(0.7, 0, 0.2, 1);
+    will-change: transform;
+  }
+  .splash-top { top: 0; }
+  .splash-bottom { bottom: 0; }
+  [data-entry-splash].is-leaving .splash-top { transform: translateY(-102%); }
+  [data-entry-splash].is-leaving .splash-bottom { transform: translateY(102%); }
+
+  .splash-wave {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 90px;
+    transform: translateY(-50%);
+    transition: opacity 0.45s ease, transform 0.8s cubic-bezier(0.7, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  [data-entry-splash].is-leaving .splash-wave {
+    opacity: 0;
+    transform: translateY(-50%) scaleY(0.2);
+  }
+
+  .splash-core {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: opacity 0.5s ease, transform 0.8s cubic-bezier(0.7, 0, 0.2, 1);
+  }
+  [data-entry-splash].is-leaving .splash-core {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  .splash-veil {
+    position: absolute;
+    width: min(78vw, 340px);
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.16) 0%, transparent 62%);
+    pointer-events: none;
+  }
+  .splash-dove {
+    position: relative;
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.45));
+    animation: splashDoveIn 0.9s ease both;
+  }
+  .splash-title {
+    position: relative;
+    margin-top: 0.6rem;
+    font-size: clamp(1.05rem, 4.6vw, 1.5rem);
+    font-weight: 600;
+    letter-spacing: 0.35em;
+    text-indent: 0.35em;
+    color: #e4cf87;
+    animation: splashDoveIn 0.9s 0.1s ease both;
+  }
+  .splash-subtitle {
+    position: relative;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(0.9rem, 3.6vw, 1.05rem);
+    letter-spacing: 0.12em;
+    color: rgba(243, 229, 171, 0.65);
+    animation: splashDoveIn 0.9s 0.2s ease both;
+  }
+  .splash-bar {
+    position: relative;
+    margin-top: 1rem;
+    width: 120px;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: rgba(212, 175, 55, 0.18);
+  }
+  .splash-bar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #b8962e, #e4cf87);
+    animation: splashBar 1.6s linear forwards;
+  }
+  @keyframes splashDoveIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes splashBar {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .splash-panel, .splash-wave, .splash-core,
+    .splash-dove, .splash-title, .splash-subtitle { animation: none; transition: opacity 0.3s ease; }
+    .splash-bar > span { animation-duration: 0.3s; }
+    [data-entry-splash].is-leaving .splash-top,
+    [data-entry-splash].is-leaving .splash-bottom { transform: none; }
+    [data-entry-splash].is-leaving { opacity: 0; }
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    const splash = document.querySelector("[data-entry-splash]");
+    if (!splash) return;
+    // Una vez por pestaña: los filtros son navegaciones completas a `/`
+    // y no deben re-mostrar el splash en cada cambio de categoría.
+    const SEEN_KEY = "refugio-splash-shown";
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(SEEN_KEY) === "1";
+    } catch {}
+    if (seen) {
+      splash.remove();
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(SEEN_KEY, "1");
+    } catch {}
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const VISIBLE_MS = reduceMotion ? 300 : 1600;
+    const EXIT_MS = reduceMotion ? 300 : 800;
+    let done = false;
+
+    if (!reduceMotion) {
+      try {
+        document.body.style.overflow = "hidden";
+      } catch {}
+    }
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try {
+        splash.remove();
+      } catch {
+        if (splash.parentNode) splash.parentNode.removeChild(splash);
+      }
+      try {
+        document.body.style.overflow = "";
+      } catch {}
+      try {
+        window.dispatchEvent(new CustomEvent("refugio-splash-done"));
+      } catch {}
+    };
+
+    const leave = (quick = false) => {
+      if (done) return;
+      splash.classList.add("is-leaving");
+      window.setTimeout(finish, (quick ? 350 : EXIT_MS) + 60);
+    };
+
+    window.setTimeout(() => leave(false), VISIBLE_MS);
+    // Respaldo por si el temporizador principal se pierde (pestaña en fondo).
+    window.setTimeout(finish, VISIBLE_MS + EXIT_MS + 2500);
+
+    const skip = () => leave(true);
+    splash.addEventListener("click", skip);
+    document.addEventListener(
+      "keydown",
+      (ev) => {
+        if (ev.key === "Escape") skip();
+      },
+      { once: false }
+    );
+  })();
+</script>

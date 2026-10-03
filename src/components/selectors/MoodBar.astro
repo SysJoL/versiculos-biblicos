@@ -6,9 +6,11 @@ import MobileBottomSheet from "@/components/ui/MobileBottomSheet.astro";
 interface Props {
   currentLang: Lang;
   currentMood: Mood;
+  hideDesktop?: boolean;
+  hideMobile?: boolean;
 }
 
-const { currentLang, currentMood } = Astro.props;
+const { currentLang, currentMood, hideDesktop = false, hideMobile = false } = Astro.props;
 const L = UI[currentLang].mood;
 
 const moods: { id: Mood; icon: string }[] = [
@@ -27,7 +29,7 @@ const mobileFilterLabel = currentLang === "es" ? "Filtrar categorías" : "Filter
   <form
     method="get"
     action=""
-    class="moodbar-mobile flex justify-center md:hidden"
+    class:list={["moodbar-mobile justify-center md:hidden", hideMobile ? "hidden" : "flex"]}
     id="refugio-mood-form-m"
   >
     <input type="hidden" name="lang" class="refugio-mood-lang" value={currentLang} />
@@ -78,7 +80,10 @@ const mobileFilterLabel = currentLang === "es" ? "Filtrar categorías" : "Filter
   </form>
 
   <nav
-    class="moodbar-scroll pointer-events-auto hidden min-w-0 overflow-x-auto overflow-y-hidden py-1 [scrollbar-width:thin] md:block md:w-max md:max-w-[min(100vw-8rem,52rem)] md:px-1"
+    class:list={[
+      "moodbar-scroll pointer-events-auto hidden min-w-0 overflow-x-auto overflow-y-hidden py-1 [scrollbar-width:thin] md:w-max md:max-w-[min(100vw-8rem,52rem)] md:px-1",
+      hideDesktop ? "md:!hidden" : "md:block",
+    ]}
     aria-label="Categoría de versículo"
   >
     <form

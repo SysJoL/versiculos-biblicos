@@ -9,11 +9,13 @@ interface Props {
   currentLang: Lang;
   currentMood: Mood;
   showMoodBar?: boolean;
+  hideDesktopMoodBar?: boolean;
+  hideMobileMoodBar?: boolean;
   showReaderLink?: boolean;
   showFavoritesLink?: boolean;
 }
 
-const { currentLang, currentMood, showMoodBar = true, showReaderLink = true, showFavoritesLink = true } = Astro.props;
+const { currentLang, currentMood, showMoodBar = true, hideDesktopMoodBar = false, hideMobileMoodBar = false, showReaderLink = true, showFavoritesLink = true } = Astro.props;
 const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
 const favHref = `/favoritos?lang=${currentLang}&mood=${currentMood}`;
 const menuTitle = currentLang === "es" ? "Idioma y favoritos" : "Language & favorites";
@@ -26,7 +28,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
   aria-label={showMoodBar ? "Categoría e idioma" : "Idioma"}
 >
   <div
-    class="relative mx-auto flex min-h-[2.875rem] w-full max-w-[1600px] flex-row items-center gap-2 px-3 py-3 sm:min-h-12 sm:gap-4 sm:px-5 sm:py-3.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-4 lg:gap-x-8 lg:px-10 lg:py-4"
+    class="relative mx-auto flex min-h-11 w-full max-w-[1600px] flex-row items-center gap-2 px-3 py-2 max-md:min-h-14 max-md:py-3 sm:gap-4 sm:px-5 sm:py-2.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-3 lg:gap-x-8 lg:px-10 lg:py-3"
   >
     <div class="hidden min-w-0 md:flex md:items-center md:gap-2">
       <a
@@ -34,7 +36,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
         class="focus-ring flex min-w-0 items-center gap-2 rounded-xl"
         aria-label="Ir al inicio"
       >
-      <div class="relative h-10 w-10 lg:h-11 lg:w-11">
+      <div class="relative h-9 w-9 lg:h-10 lg:w-10">
         <img
           data-site-brand-dove
           src="/img/paloma-top.png"
@@ -65,7 +67,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
         class="focus-ring flex items-center gap-2 rounded-xl"
         aria-label="Ir al inicio"
       >
-      <div class="relative h-9 w-9">
+      <div class="relative h-10 w-10">
         <img
           data-site-brand-dove
           src="/img/paloma-top.png"
@@ -97,7 +99,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
       <div
         class="pointer-events-auto w-auto min-w-0 md:flex md:w-auto md:max-w-none md:justify-center"
       >
-        <MoodBar currentLang={currentLang} currentMood={currentMood} />
+        <MoodBar currentLang={currentLang} currentMood={currentMood} hideDesktop={hideDesktopMoodBar} hideMobile={hideMobileMoodBar} />
       </div>
     </div>
     )}
@@ -110,7 +112,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
       {showReaderLink && (
       <a
         href="/lectura"
-        class="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+        class="focus-ring inline-flex h-10 w-10 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
         aria-label="Lectura bíblica"
         title="Lectura bíblica"
       >
@@ -136,7 +138,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
         type="button"
         id="refugio-more-open"
         data-more-open
-        class="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55 md:hidden"
+        class="focus-ring inline-flex h-10 w-10 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55 md:hidden"
         aria-label={menuTitle}
         aria-haspopup="dialog"
         aria-expanded="false"
