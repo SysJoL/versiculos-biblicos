@@ -1184,45 +1184,32 @@ export function BibleReader() {
           ref={textRef}
           className={
             immersive
-              ? "fixed inset-0 z-[90] overflow-y-auto border-white/10 bg-[#060612] p-4 sm:p-6 md:inset-y-[3dvh] md:inset-x-0 md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border"
+              ? "fixed inset-0 z-[90] overflow-y-auto border-white/10 bg-[#060612] px-4 pb-28 pt-2 sm:px-6 sm:pt-3 md:inset-y-[3dvh] md:inset-x-0 md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border md:pb-6"
               : `scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`
           }
         >
-          {immersive ? (
-            <nav className="sticky top-0 z-30 -mx-4 -mt-4 flex h-12 w-[calc(100%+2rem)] items-center gap-2 border-b border-white/10 bg-[#060612] px-4 text-xs sm:-mx-6 sm:-mt-6 sm:w-[calc(100%+3rem)] sm:px-6 md:rounded-t-2xl" aria-label="breadcrumb">
-              <button
-                type="button"
-                onClick={goBack}
-                className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5 font-medium text-gold-200/80 transition hover:bg-white/5 hover:text-gold-100"
-              >
-                <i className="fa-solid fa-chevron-left text-[10px]" aria-hidden />
-                {L.backToChapters}
-              </button>
-              <span className="min-w-0 flex-1 truncate text-gold-100/50">
-                {`${bookLabel(book, lang)} · ${L.chapter.toLowerCase()} ${chapter}`}
-              </span>
-            </nav>
-          ) : null}
           <div data-reader-sentinel className="h-px" aria-hidden />
           <header
             data-reader-sticky
             style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
-            className={`reader-sticky sticky ${immersive ? "top-12" : stickyTop} z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
+            className={`reader-sticky sticky ${immersive ? "top-0" : stickyTop} z-20 -mx-4 mb-2 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
               isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88"
             }`}
           >
-            <button
-              type="button"
-              onClick={goBack}
-              aria-label={L.backToChapters}
-              title={L.backToChapters}
-              className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
-            >
-              <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
-            </button>
-            <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-semibold ${accentText}`}>
-              {data?.label ?? `${bookLabel(book, lang)} ${chapter}`}
-            </h2>
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={L.backToChapters}
+                title={L.backToChapters}
+                className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
+              </button>
+              <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-semibold ${accentText}`}>
+                {data?.label ?? `${bookLabel(book, lang)} ${chapter}`}
+              </h2>
+            </div>
             <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
@@ -1269,7 +1256,7 @@ export function BibleReader() {
                 disabled={!chapter || chapter <= 1 || loading}
                 aria-label={L.prevChapter}
                 title={L.prevChapter}
-                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5 disabled:opacity-40"
+                className={`focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5 disabled:opacity-40 ${immersive ? "max-md:hidden" : ""}`}
               >
                 <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
               </button>
@@ -1279,7 +1266,7 @@ export function BibleReader() {
                 disabled={!book || chapter >= book.chapters || loading}
                 aria-label={L.nextChapter}
                 title={L.nextChapter}
-                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5 disabled:opacity-40"
+                className={`focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5 disabled:opacity-40 ${immersive ? "max-md:hidden" : ""}`}
               >
                 <i className="fa-solid fa-chevron-right text-xs" aria-hidden />
               </button>
@@ -1387,6 +1374,40 @@ export function BibleReader() {
               )}
             </>
           )}
+          {immersive ? (
+            <nav
+              aria-label={lang === "es" ? "Capítulos" : "Chapters"}
+              className={`fixed inset-x-0 z-[95] border-t border-white/10 bg-[#060612]/95 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-md transition-[bottom] duration-200 md:hidden ${highlight != null ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]" : "bottom-0"}`}
+            >
+              <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-4">
+                <button
+                  type="button"
+                  onClick={() => goChapter(-1)}
+                  disabled={!chapter || chapter <= 1 || loading}
+                  aria-label={L.prevChapter}
+                  title={L.prevChapter}
+                  className="focus-ring inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-sm font-semibold text-gold-200 transition hover:bg-white/[0.06] disabled:opacity-40"
+                >
+                  <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
+                  {L.prevShort}
+                </button>
+                <span className={`shrink-0 font-display text-sm font-semibold ${accentText}`}>
+                  {L.chapter} {chapter}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goChapter(1)}
+                  disabled={!book || chapter >= book.chapters || loading}
+                  aria-label={L.nextChapter}
+                  title={L.nextChapter}
+                  className="focus-ring inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-sm font-semibold text-gold-200 transition hover:bg-white/[0.06] disabled:opacity-40"
+                >
+                  {L.nextShort}
+                  <i className="fa-solid fa-chevron-right text-xs" aria-hidden />
+                </button>
+              </div>
+            </nav>
+          ) : null}
         </article>
       )}
 

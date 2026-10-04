@@ -1,5 +1,6 @@
 ---
 import LanguageBar from "@/components/selectors/LanguageBar.astro";
+import VisualSanctuarySwitcher from "@/components/celestial/VisualSanctuarySwitcher";
 import MoodBar from "@/components/selectors/MoodBar.astro";
 import MobileBottomSheet from "@/components/ui/MobileBottomSheet.astro";
 import ConnectionModeBadge from "@/components/celestial/ConnectionModeBadge.astro";
@@ -134,6 +135,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
       <div class="hidden md:block">
         <LanguageBar currentMood={currentMood} />
       </div>
+      <VisualSanctuarySwitcher client:load inline />
       <button
         type="button"
         id="refugio-more-open"

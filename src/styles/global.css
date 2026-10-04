@@ -63,7 +63,8 @@
   /* Lectura inmersiva: oculta el header del sitio y el footer de la página
      mientras el pasaje ocupa la pantalla. */
   body.refugio-immersive [data-site-header],
-  body.refugio-immersive [data-site-footer] {
+  body.refugio-immersive [data-site-footer],
+  body.refugio-immersive [data-sanctuary-switcher] {
     display: none !important;
   }
 }
