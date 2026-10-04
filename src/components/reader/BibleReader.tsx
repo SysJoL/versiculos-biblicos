@@ -432,9 +432,37 @@ export function BibleReader() {
     syncUrl(lang, book, chapter, highlight);
   }, [lang, book, chapter, highlight, syncUrl]);
 
+  // Scroll inteligente por etapa: lleva cada sección a pantalla con offset
+  // del header fijo. Al leer, el pasaje ocupa la vista y su header sticky
+  // mantiene las opciones visibles.
+  const booksRef = useRef<HTMLDivElement>(null);
+  const chaptersRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLElement>(null);
+
+  const scrollBehavior = (): ScrollBehavior =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    const target =
+      stage === "books"
+        ? booksRef.current
+        : stage === "chapters"
+          ? chaptersRef.current
+          : null;
+    if (target) {
+      target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+    } else {
+      window.scrollTo({ top: 0, behavior: scrollBehavior() });
+    }
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "text" || loading || !data) return;
+    textRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  }, [stage, loading, data]);
 
   useEffect(() => {
     if (loading || !highlight || !data) return;
@@ -1101,7 +1129,7 @@ export function BibleReader() {
       )}
 
       {stage === "books" && (
-        <div className={`space-y-6 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
+        <div ref={booksRef} className={`scroll-mt-28 space-y-6 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
           <p className={`text-sm font-semibold ${accentText}`}>{L.chooseBook}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {testamentBooks.map((b) => (
@@ -1122,7 +1150,7 @@ export function BibleReader() {
       )}
 
       {stage === "chapters" && book && (
-        <div className={`rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
+        <div ref={chaptersRef} className={`scroll-mt-28 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
           <p className={`mb-2 text-sm font-semibold ${accentText}`}>
             {L.chooseChapter}
           </p>
@@ -1144,7 +1172,8 @@ export function BibleReader() {
 
       {stage === "text" && book && chapter && (
         <article
-          className={`rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`}
+          ref={textRef}
+          className={`scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`}
         >
           <div data-reader-sentinel className="h-px" aria-hidden />
           <header
