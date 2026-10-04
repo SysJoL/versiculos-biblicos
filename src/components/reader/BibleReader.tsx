@@ -127,6 +127,8 @@ export function BibleReader() {
   const [focused, setFocused] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  // Lectura inmersiva: el pasaje llena la pantalla.
+  const [immersive, setImmersive] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const overlayInputRef = useRef<HTMLInputElement | null>(null);
@@ -288,6 +290,21 @@ export function BibleReader() {
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [focused]);
+
+  // Modo inmersivo: scroll-lock + salir con Escape.
+  useEffect(() => {
+    if (!immersive) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImmersive(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [immersive]);
 
   // Overlay full-screen: autofocus, scroll-lock y cierre con Escape.
   useEffect(() => {
@@ -1066,36 +1083,26 @@ export function BibleReader() {
           </div>
         </div>
         </>
-      ) : (
+      ) : stage === "chapters" ? (
         <div
-          className={
-            stage === "chapters" || stage === "text"
-              ? `mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:px-4 ${stickyBg}`
-              : undefined
-          }
+          className={`mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:px-4 ${stickyBg}`}
         >
           {searchTrigger}
-          {(stage === "chapters" || stage === "text") && (
-            <nav className="flex items-center gap-2 text-xs last:mb-1" aria-label="breadcrumb">
-              <button
-                type="button"
-                onClick={goBack}
-                className={`focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5 font-medium text-gold-200/80 transition hover:bg-white/5 hover:text-gold-100`}
-              >
-                <i className="fa-solid fa-chevron-left text-[10px]" aria-hidden />
-                {stage === "text" ? L.backToChapters : L.backToBooks}
-              </button>
-              <span className="min-w-0 truncate text-gold-100/50">
-                {stage === "chapters" && book
-                  ? bookLabel(book, lang)
-                  : book
-                    ? `${bookLabel(book, lang)} · ${L.chapter.toLowerCase()} ${chapter}`
-                    : ""}
-              </span>
-            </nav>
-          )}
+          <nav className="flex items-center gap-2 text-xs last:mb-1" aria-label="breadcrumb">
+            <button
+              type="button"
+              onClick={goBack}
+              className={`focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5 font-medium text-gold-200/80 transition hover:bg-white/5 hover:text-gold-100`}
+            >
+              <i className="fa-solid fa-chevron-left text-[10px]" aria-hidden />
+              {L.backToBooks}
+            </button>
+            <span className="min-w-0 truncate text-gold-100/50">
+              {book ? bookLabel(book, lang) : ""}
+            </span>
+          </nav>
         </div>
-      )}
+      ) : null}
 
       {stage === "testaments" && (
         <div className={`space-y-3 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
@@ -1173,20 +1180,76 @@ export function BibleReader() {
       {stage === "text" && book && chapter && (
         <article
           ref={textRef}
-          className={`scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`}
+          className={
+            immersive
+              ? "fixed inset-0 z-[90] overflow-y-auto border-white/10 bg-[#060612] p-4 sm:p-6"
+              : `scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`
+          }
         >
+          {immersive ? (
+            <nav className="sticky top-0 z-30 -mx-4 -mt-4 flex h-12 w-[calc(100%+2rem)] items-center gap-2 border-b border-white/10 bg-[#060612] px-4 text-xs sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6" aria-label="breadcrumb">
+              <button
+                type="button"
+                onClick={goBack}
+                className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5 font-medium text-gold-200/80 transition hover:bg-white/5 hover:text-gold-100"
+              >
+                <i className="fa-solid fa-chevron-left text-[10px]" aria-hidden />
+                {L.backToChapters}
+              </button>
+              <span className="min-w-0 flex-1 truncate text-gold-100/50">
+                {`${bookLabel(book, lang)} · ${L.chapter.toLowerCase()} ${chapter}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setImmersive(false)}
+                aria-label={lang === "es" ? "Salir de lectura inmersiva" : "Exit immersive reading"}
+                title={lang === "es" ? "Salir de lectura inmersiva" : "Exit immersive reading"}
+                className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-compress text-xs" aria-hidden />
+              </button>
+            </nav>
+          ) : null}
           <div data-reader-sentinel className="h-px" aria-hidden />
           <header
             data-reader-sticky
             style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
-            className={`reader-sticky sticky ${stickyTop} z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
+            className={`reader-sticky sticky ${immersive ? "top-12" : stickyTop} z-20 -mx-4 mb-3 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
               isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88"
             }`}
           >
-            <h2 className={`font-display text-lg font-semibold ${accentText}`}>
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label={L.backToChapters}
+              title={L.backToChapters}
+              className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+            >
+              <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
+            </button>
+            <h2 className={`min-w-0 flex-1 truncate font-display text-lg font-semibold ${accentText}`}>
               {data?.label ?? `${bookLabel(book, lang)} ${chapter}`}
             </h2>
-            <div className="flex gap-1">
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setOverlayOpen(true)}
+                aria-label={L.search}
+                title={L.search}
+                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-magnifying-glass text-xs" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => setImmersive((v) => !v)}
+                aria-label={lang === "es" ? "Lectura inmersiva" : "Immersive reading"}
+                title={lang === "es" ? "Lectura inmersiva" : "Immersive reading"}
+                aria-pressed={immersive}
+                className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className={`fa-solid text-xs ${immersive ? "fa-compress" : "fa-expand"}`} aria-hidden />
+              </button>
               <button
                 type="button"
                 onClick={() => changeFont(-1)}
