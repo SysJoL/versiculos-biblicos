@@ -1,0 +1,94 @@
+---
+import BaseLayout from "@/components/layout/BaseLayout.astro";
+import CosmicBackground from "@/components/celestial/CosmicBackground";
+import SiteHeader from "@/components/celestial/SiteHeader.astro";
+import StreakBadge from "@/components/celestial/StreakBadge.astro";
+import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
+import { BibleReader } from "@/components/reader/BibleReader";
+import { parseRef } from "@/lib/domain/refParser";
+import { bookLabel, findCatalogBook } from "@/lib/data/booksCatalog";
+import type { Lang } from "@/lib/domain/types";
+
+// Idioma y ref iniciales: se pasan a la isla para que el primer render del
+// cliente sea idéntico al del servidor (sin hydration mismatch).
+const langParam = Astro.url.searchParams.get("lang");
+const lecturaLang: Lang = langParam === "en" ? "en" : "es";
+const year = new Date().getFullYear();
+// Vista previa al compartir: si la URL trae ?ref=, el OG nombra el pasaje.
+let lecturaOgTitle: string | undefined;
+let lecturaOgDescription: string | undefined;
+const refParam = Astro.url.searchParams.get("ref");
+if (refParam) {
+  const parsed = parseRef(refParam);
+  const found = parsed ? findCatalogBook(parsed.bookCode) : undefined;
+  if (parsed && found) {
+    const label = `${bookLabel(found, "es")} ${parsed.chapter}${parsed.verse ? `:${parsed.verse}` : ""}`;
+    lecturaOgTitle = `${label} — Lectura Bíblica`;
+    lecturaOgDescription = `Lee ${label} completo en español e inglés, con imagen y opciones para compartir.`;
+  }
+}
+---
+
+<BaseLayout
+  title="Lectura Bíblica — Versículos Bíblicos"
+  description="Lee capítulos completos de la Biblia en español e inglés. Busca cualquier libro, capítulo o versículo."
+  lang="es"
+  ogTitle={lecturaOgTitle}
+  ogDescription={lecturaOgDescription}
+>
+  <CosmicBackground client:idle />
+  <SiteHeader currentLang="es" currentMood="all" showMoodBar={false} showReaderLink={false} />
+  <main
+    class="pointer-events-auto relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3 pb-10 pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:px-4 sm:pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-6 md:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:px-8"
+  >
+    <nav aria-label="Breadcrumb" class="mt-2 flex justify-start">
+      <ol class="inline-flex items-center gap-1.5 rounded-full border border-gold-500/30 bg-black/35 px-3 py-1.5 text-xs text-gold-300/60 ring-1 ring-inset ring-white/5 backdrop-blur-sm sm:text-[13px]">
+        <li>
+          <a
+            href="/"
+            class="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
+          >
+            <i class="fa-solid fa-house text-[0.7rem]" aria-hidden="true"></i>
+            <span class="i18n-es">Inicio</span>
+            <span class="i18n-en hidden" aria-hidden="true">Home</span>
+          </a>
+        </li>
+        <li aria-hidden="true" class="text-gold-500/40">/</li>
+        <li aria-current="page" class="font-medium text-gold-200/80">
+          <span class="i18n-es">Lectura Bíblica</span>
+          <span class="i18n-en hidden" aria-hidden="true">Bible Reading</span>
+        </li>
+      </ol>
+    </nav>
+    <div class="mt-2 flex flex-1 flex-col items-center py-2 sm:py-4">
+      <div class="mb-3">
+        <StreakBadge />
+      </div>
+      <BibleReader client:load initialLang={lecturaLang} initialRef={refParam} />
+    </div>
+  </main>
+  <footer data-site-footer class="relative z-10 mt-6 w-full border-t border-gold-500/15 sm:mt-8">
+    <span class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-night p-[3px] ring-1 ring-gold-500/30" aria-hidden="true">
+      <img
+        src="/img/logo-refugio-celestial-best.png"
+        alt=""
+        class="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8"
+        loading="lazy"
+      />
+    </span>
+    <div class="mx-auto w-full max-w-3xl px-3 pb-4 pt-5 text-center text-xs text-gold-300/70 sm:px-4 sm:text-sm md:px-6 lg:px-8">
+      <span>© {year} Versículos Bíblicos · </span>
+      <span class="i18n-es">Desarrollado por </span>
+      <span class="i18n-en hidden" aria-hidden="true">Developed by </span>
+      <a
+        href="https://sysjol.onrender.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
+      >
+        SysJoL
+      </a>
+    </div>
+  </footer>
+  <UrlParamsSync />
+</BaseLayout>

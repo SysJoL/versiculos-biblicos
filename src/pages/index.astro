@@ -1,12 +1,14 @@
 ---
 import BaseLayout from "@/components/layout/BaseLayout.astro";
 import CosmicBackground from "@/components/celestial/CosmicBackground";
-import AppHeader from "@/components/celestial/AppHeader.astro";
+import EntrySplash from "@/components/celestial/EntrySplash.astro";
 import SiteHeader from "@/components/celestial/SiteHeader.astro";
+import StreakBadge from "@/components/celestial/StreakBadge.astro";
 import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import NotificationOptIn from "@/components/ui/NotificationOptIn.astro";
 import PwaInstallPrompt from "@/components/ui/PwaInstallPrompt.astro";
-import VisualSanctuarySwitcher from "@/components/celestial/VisualSanctuarySwitcher";
+import CategorySidebar from "@/components/selectors/CategorySidebar.astro";
+import CategoryCombobox from "@/components/selectors/CategoryCombobox.astro";
 import { VerseCard } from "@/components/verse/VerseCard";
 import { getSsgInitialVerse } from "@/lib/providers/verseServiceFactory";
 import type { Lang, Mood } from "@/lib/domain/types";
@@ -14,38 +16,60 @@ import type { Lang, Mood } from "@/lib/domain/types";
 const buildLang: Lang = "es";
 const buildMood: Mood = "all";
 const initial = getSsgInitialVerse(buildLang, buildMood);
+
+// Estado activo real desde la URL (?lang/?mood). Los filtros son GET
+// completos, así que el servidor debe pintar el active correcto.
+const ALLOWED_MOODS: Mood[] = ["all", "comfort", "wisdom", "hope", "love", "repentance"];
+const rawLang = Astro.url.searchParams.get("lang");
+const rawMood = Astro.url.searchParams.get("mood");
+const currentLang: Lang = rawLang === "en" ? "en" : "es";
+const currentMood: Mood = ALLOWED_MOODS.includes(rawMood as Mood) ? (rawMood as Mood) : "all";
 const year = new Date().getFullYear();
+// Vista previa al compartir: el versículo inicial (SSR, español) como OG.
+const ogVerseText = initial.text.length > 160 ? `${initial.text.slice(0, 157)}…` : initial.text;
+const ogTitle = `${initial.ref} — Versículos Bíblicos`;
+const ogDescription = `“${ogVerseText}” Medita, ora y descarga el versículo del día.`;
 ---
 
 <BaseLayout
   title="Versículos Bíblicos — Meditación bíblica"
   description="Medita, ora y descarga un versículo. Español e inglés, categorías y API bíblica con respaldo local."
-  lang="es"
+  lang={currentLang}
+  ogTitle={ogTitle}
+  ogDescription={ogDescription}
 >
   <CosmicBackground client:idle />
-  <SiteHeader currentLang="es" currentMood="all" />
+  <SiteHeader currentLang={currentLang} currentMood={currentMood} hideDesktopMoodBar hideMobileMoodBar />
+  <EntrySplash lang={currentLang} />
   <main
-    class="pointer-events-auto relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3 pb-8 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:px-4 sm:pt-[calc(5.25rem+env(safe-area-inset-top,0px))] md:px-6 md:pb-10 md:pt-[calc(6rem+env(safe-area-inset-top,0px))] lg:px-8"
+    class="pointer-events-auto relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3 pb-8 pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:px-4 sm:pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-6 md:pb-10 md:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:max-w-6xl lg:px-8"
   >
-    <div class="shrink-0 border-b border-gold-500/5 pb-3 sm:pb-4">
-      <AppHeader />
-    </div>
-    <div
-      class="mt-0 flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2 sm:py-3"
-    >
-      <div class="w-full max-w-2xl">
-        <VerseCard client:load initialFromBuild={initial} />
+    <div class="mx-auto mt-2 flex min-h-0 w-full max-w-[956px] flex-1 items-start justify-center gap-6 py-2 sm:py-3 lg:items-stretch">
+      <CategorySidebar currentLang={currentLang} currentMood={currentMood} />
+      <div class="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center self-stretch">
+        <div class="flex min-h-1 w-full flex-[0.5] items-center justify-center" aria-hidden="true"></div>
+        <StreakBadge />
+        <div class="mx-auto mt-2 w-full max-w-[16rem]">
+          <CategoryCombobox currentLang={currentLang} currentMood={currentMood} />
+        </div>
+        <div class="flex min-h-1 w-full flex-1 items-center justify-center" aria-hidden="true"></div>
+        <div class="w-full max-w-2xl">
+          <VerseCard client:load initialFromBuild={initial} />
+        </div>
+        <div class="flex min-h-1 w-full flex-1 items-center justify-center" aria-hidden="true"></div>
       </div>
     </div>
-    <footer class="mt-6 border-t border-gold-500/15 pt-3 text-center text-xs text-gold-300/70 sm:mt-8 sm:pt-4 sm:text-sm">
-      <div class="mb-2 flex items-center justify-center">
-        <img
-          src="/img/logo-refugio-celestial-best.png"
-          alt="Logo Refugio Celestial"
-          class="h-8 w-8 rounded-full border border-gold-500/30 object-cover sm:h-9 sm:w-9"
-          loading="lazy"
-        />
-      </div>
+  </main>
+  <footer data-site-footer class="relative z-10 mt-6 w-full border-t border-gold-500/15 sm:mt-8">
+    <span class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-night p-[3px] ring-1 ring-gold-500/30" aria-hidden="true">
+      <img
+        src="/img/logo-refugio-celestial-best.png"
+        alt=""
+        class="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8"
+        loading="lazy"
+      />
+    </span>
+    <div class="mx-auto w-full max-w-3xl px-3 pb-4 pt-5 text-center text-xs text-gold-300/70 sm:px-4 sm:text-sm md:px-6 lg:max-w-6xl lg:px-8">
       <span>© {year} Versículos Bíblicos · </span>
       <span class="i18n-es">Desarrollado por </span>
       <span class="i18n-en hidden" aria-hidden="true">Developed by </span>
@@ -57,10 +81,9 @@ const year = new Date().getFullYear();
       >
         SysJoL
       </a>
-    </footer>
-  </main>
+    </div>
+  </footer>
   <UrlParamsSync />
   <NotificationOptIn />
   <PwaInstallPrompt />
-  <VisualSanctuarySwitcher client:load />
 </BaseLayout>

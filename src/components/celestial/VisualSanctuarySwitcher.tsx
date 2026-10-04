@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { showToast } from "@/lib/ui/toast";
+import {
+  SANCTUARY_LS_KEY,
+  type SanctuaryTheme,
+} from "@/lib/ui/sanctuary";
 
-type Theme = "celestial" | "nature";
-
-const LS_KEY = "refugio-celestial:sanctuary-theme";
-
-export default function VisualSanctuarySwitcher() {
-  const [theme, setTheme] = useState<Theme>("celestial");
+export default function VisualSanctuarySwitcher({ inline = false }: { inline?: boolean }) {
+  const [theme, setTheme] = useState<SanctuaryTheme>("celestial");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(LS_KEY) as Theme | null;
+      const stored = localStorage.getItem(SANCTUARY_LS_KEY);
       if (stored === "nature" || stored === "celestial") {
         setTheme(stored);
         // Synchronously dispatch once to align background with storage on mount
@@ -28,10 +28,10 @@ export default function VisualSanctuarySwitcher() {
   }, []);
 
   const toggle = () => {
-    const next: Theme = theme === "celestial" ? "nature" : "celestial";
+    const next: SanctuaryTheme = theme === "celestial" ? "nature" : "celestial";
     setTheme(next);
     if (typeof window !== "undefined") {
-      localStorage.setItem(LS_KEY, next);
+      localStorage.setItem(SANCTUARY_LS_KEY, next);
       window.dispatchEvent(
         new CustomEvent("refugio-sanctuary-changed", {
           detail: { theme: next },
@@ -57,13 +57,16 @@ export default function VisualSanctuarySwitcher() {
       : "Cambiar a Santuario Celestial";
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6">
+    <div
+      {...(inline ? {} : { "data-sanctuary-switcher": "" })}
+      className={inline ? "contents" : "fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6"}
+    >
       <button
         type="button"
         onClick={toggle}
         aria-label={titleText}
         title={titleText}
-        className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-full border border-gold-500/40 bg-black/45 text-gold-300 shadow-[0_0_15px_rgba(212,175,55,0.22)] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-gold-400 hover:text-gold-100 hover:shadow-[0_0_20px_rgba(212,175,55,0.35)] active:scale-95"
+        className={`focus-ring inline-flex items-center justify-center rounded-full border border-gold-500/40 bg-black/45 text-gold-300 shadow-[0_0_15px_rgba(212,175,55,0.22)] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-gold-400 hover:text-gold-100 hover:shadow-[0_0_20px_rgba(212,175,55,0.35)] active:scale-95 ${inline ? "h-10 w-10 md:h-9 md:w-9" : "h-11 w-11"}`}
       >
         {theme === "celestial" ? (
           <i className="fa-solid fa-moon text-base transition-transform duration-500 rotate-0" aria-hidden="true" />

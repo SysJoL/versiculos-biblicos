@@ -1,8 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Lang, Verse } from "@/lib/domain/types";
 import { labelsFor } from "@/lib/i18n/labels";
 import { VerseRefCache } from "@/lib/cache/VerseRefCache";
-import { BottomSheet } from "@/components/ui/BottomSheet";
+import { DevotionDrawer } from "@/components/ui/DevotionDrawer";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 const NT_BOOKS = new Set([
   "mateo",
@@ -117,8 +118,16 @@ export function VerseCardView({
   actionSlotDesktop,
 }: Props) {
   const [devotionOpen, setDevotionOpen] = useState<DevotionAction | null>(null);
-  const cache = new VerseRefCache();
-  const n = cache.getRecentRefs().length;
+  // Contador igual que el SSR (0) y sincronizado al montar para evitar
+  // hydration mismatch con lo guardado en localStorage.
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    try {
+      setN(new VerseRefCache().getRecentRefs().length);
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
   const L = labelsFor(lang);
   const isLongVerse = verse.text.length > 170 || /\n/.test(verse.text);
 
@@ -163,37 +172,79 @@ export function VerseCardView({
         lang === "es"
           ? {
               label: "Medita",
+              icon: "fa-brain",
               title: "Medita en su verdad",
               body: `Lee ${verse.ref} en silencio y pregúntate: ¿qué verdad de Dios necesito creer hoy para caminar en paz?`,
+              steps: [
+                `Lee ${verse.ref} despacio, en voz baja si puedes.`,
+                "Repite la frase que más te toque y guárdala en tu corazón.",
+                "Guarda un minuto de silencio y deja que Dios hable.",
+              ],
+              closing: "Su Palabra permanece para siempre.",
             }
           : {
               label: "Meditate",
+              icon: "fa-brain",
               title: "Meditate on His truth",
               body: `Read ${verse.ref} slowly and ask: what truth about God do I need to believe today to walk in peace?`,
+              steps: [
+                `Read ${verse.ref} slowly, out loud if you can.`,
+                "Repeat the phrase that touches you most and keep it in your heart.",
+                "Keep a minute of silence and let God speak.",
+              ],
+              closing: "His Word endures forever.",
             },
       pray:
         lang === "es"
           ? {
               label: "Ora",
+              icon: "fa-hands-praying",
               title: "Ora con esperanza",
               body: `Señor, gracias por tu Palabra en ${verse.ref}. Fortalece mi fe y dirige mis pasos hoy. Amén.`,
+              steps: [
+                "Comienza dando gracias por lo que Dios ya hizo.",
+                "Presenta tu necesidad de hoy con confianza.",
+                "Termina con: «Hágase tu voluntad. Amén».",
+              ],
+              closing: "Él escucha la oración del justo.",
             }
           : {
               label: "Pray",
+              icon: "fa-hands-praying",
               title: "Pray with hope",
               body: `Lord, thank You for Your Word in ${verse.ref}. Strengthen my faith and guide my steps today. Amen.`,
+              steps: [
+                "Begin by thanking God for what He has already done.",
+                "Present today's need with confidence.",
+                "Finish with: “Your will be done. Amen.”",
+              ],
+              closing: "He hears the prayer of the righteous.",
             },
       reflect:
         lang === "es"
           ? {
               label: "Reflexiona",
+              icon: "fa-lightbulb",
               title: "Reflexiona y actúa",
               body: `Elige una acción concreta para hoy inspirada en este versículo y compártela con alguien que necesite ánimo.`,
+              steps: [
+                "Elige una acción concreta inspirada en este versículo.",
+                "Escríbela o compártela con alguien hoy mismo.",
+                "Al anochecer, revisa cómo la viviste.",
+              ],
+              closing: "Sé hacedor de la Palabra, no solo oidor.",
             }
           : {
               label: "Reflect",
+              icon: "fa-lightbulb",
               title: "Reflect and act",
               body: `Choose one concrete action for today inspired by this verse and share encouragement with someone who needs it.`,
+              steps: [
+                "Choose one concrete action inspired by this verse.",
+                "Write it down or share it with someone today.",
+                "At nightfall, review how you lived it.",
+              ],
+              closing: "Be a doer of the Word, not only a hearer.",
             },
       close: lang === "es" ? "Cerrar" : "Close",
     };
@@ -201,23 +252,16 @@ export function VerseCardView({
   }, [lang, verse.ref]);
 
   return (
+    <ErrorBoundary lang={lang} code="500">
     <article
-      className={`group relative z-10 mx-auto w-full max-w-2xl overflow-visible border px-2 py-8 transition-colors duration-700 max-md:min-h-0 max-md:rounded-2xl max-md:border-[0.5px] max-md:shadow-none md:rounded-2xl md:bg-gradient-to-b md:px-6 md:py-6 md:shadow-[0_0_24px_rgba(0,0,0,0.28)] ${articleMobileBg} ${articleMdBg} ${articleMdBorder}`}
+      className={`group relative z-10 mx-auto w-full max-w-2xl overflow-visible border p-5 transition-colors duration-700 max-md:min-h-0 max-md:rounded-2xl max-md:border-[0.5px] max-md:shadow-none md:rounded-2xl md:bg-gradient-to-b md:p-6 md:shadow-[0_0_24px_rgba(0,0,0,0.28)] lg:flex lg:h-full lg:flex-col ${articleMobileBg} ${articleMdBg} ${articleMdBorder}`}
     >
-      {audioSlot ? (
-        <div className="absolute left-3 top-3 z-20 max-md:hidden">
+      <div className="mb-3 flex w-full items-center justify-between gap-2 sm:mb-3">
+        <div className="flex w-10 shrink-0 items-center justify-start">
           {audioSlot}
         </div>
-      ) : null}
-      {actionSlot ? (
-        <div className="absolute right-3 top-3 z-20 max-md:hidden">
-          {actionSlot}
-        </div>
-      ) : null}
-
-      <div className="relative mb-3 flex w-full items-center justify-center sm:mb-3">
-        <p className="flex w-full justify-center max-md:px-12">
-          <span className="inline-flex max-w-[calc(100vw-8.5rem)] items-center justify-center gap-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-center font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400 sm:max-w-none">
+        <p className="flex min-w-0 flex-1 justify-center">
+          <span className="inline-flex min-w-0 max-w-full items-center justify-center gap-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-center font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400">
             <i
               className="fa-solid fa-book-bible me-1.5 shrink-0 opacity-80"
               aria-hidden
@@ -225,21 +269,14 @@ export function VerseCardView({
             <span className="truncate">{categoryLabel}</span>
           </span>
         </p>
-        {audioSlot ? (
-          <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2 md:hidden">
-            {audioSlot}
-          </div>
-        ) : null}
-        {actionSlot ? (
-          <div className="absolute right-0 top-1/2 z-20 -translate-y-1/2 md:hidden">
-            {actionSlot}
-          </div>
-        ) : null}
+        <div className="flex w-10 shrink-0 items-center justify-end">
+          {actionSlot}
+        </div>
       </div>
 
       <div
         id={captureId}
-        className={`capture-root relative overflow-hidden bg-black/0 px-1 py-2 transition-colors duration-700 max-md:rounded-2xl max-md:border max-md:px-3 max-md:py-5 md:rounded-lg md:border md:px-5 md:py-5 ${captureMobileBg} ${captureMdBg} ${captureMdBorder}`}
+        className={`capture-root relative overflow-hidden bg-black/0 px-1 py-2 transition-colors duration-700 max-md:rounded-2xl max-md:border max-md:px-3 max-md:py-5 md:rounded-lg md:border md:px-5 md:py-5 lg:flex lg:flex-1 lg:flex-col lg:justify-center ${captureMobileBg} ${captureMdBg} ${captureMdBorder}`}
       >
         <div className="relative z-10">
           <div className="mb-2 flex items-center justify-center gap-2 text-gold-400 sm:mb-3 sm:gap-3">
@@ -365,29 +402,22 @@ export function VerseCardView({
       </p>
 
       {devotionOpen ? (
-        <BottomSheet
+        <DevotionDrawer
           isOpen={Boolean(devotionOpen)}
+          action={devotionOpen}
+          icon={devotionCopy[devotionOpen].icon}
           title={devotionCopy[devotionOpen].title}
+          lead={devotionCopy[devotionOpen].body}
+          verseRef={verse.ref}
+          verseText={verse.text}
+          steps={devotionCopy[devotionOpen].steps}
+          closing={devotionCopy[devotionOpen].closing}
           onClose={() => setDevotionOpen(null)}
           closeLabel={devotionCopy.close}
-          bodyBackgroundImageUrl="/img/paloma-perfil-fondo.jpg"
-          panelClassName="md:max-w-2xl"
           sanctuary={sanctuary}
-          footer={
-            <button
-              type="button"
-              onClick={() => setDevotionOpen(null)}
-              className="inline-flex min-h-9 w-full items-center justify-center rounded-full border border-gold-400/65 bg-gold-500/16 px-4 text-xs font-semibold text-gold-100 transition hover:border-gold-300 hover:bg-gold-500/25 md:w-auto md:px-5"
-            >
-              {devotionCopy.close}
-            </button>
-          }
-        >
-          <p className="max-w-2xl text-base leading-relaxed text-gold-50 md:text-lg md:leading-relaxed">
-            {devotionCopy[devotionOpen].body}
-          </p>
-        </BottomSheet>
+        />
       ) : null}
     </article>
+    </ErrorBoundary>
   );
 }

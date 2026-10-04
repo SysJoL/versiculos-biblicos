@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Lang } from "@/lib/domain/types";
 import { UI } from "@/lib/i18n/labels";
 import { showToast } from "@/lib/ui/toast";
+import { getStoredSanctuary } from "@/lib/ui/sanctuary";
 import {
   toBlob as htmlToImageBlob,
   toPng as htmlToImagePng,
@@ -134,11 +135,7 @@ export async function captureVerseBlobById(
   }
 
   // Resolve background colour from active sanctuary theme
-  const sanctuaryTheme =
-    typeof window !== "undefined"
-      ? localStorage.getItem("refugio-sanctuary")
-      : null;
-  const isNature = sanctuaryTheme === "nature";
+  const isNature = getStoredSanctuary() === "nature";
   // Solid opaque background matching the active theme.
   const captureBg = isNature ? "#0a1208" : "#0e0f1f";
   // Subtle tinted overlay on top of the solid base (mimics the glass panel look).

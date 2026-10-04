@@ -92,9 +92,45 @@
     }
 
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", applyFromQuery);
+      document.addEventListener("DOMContentLoaded", init);
     } else {
+      init();
+    }
+
+    function init() {
       applyFromQuery();
+      preserveParamsOnLangForms();
+    }
+
+    // Al cambiar idioma desde el header, conserva params actuales (ej. ref)
+    // para no resetear la vista del lector.
+    function preserveParamsOnLangForms() {
+      const forms = document.querySelectorAll("form");
+      forms.forEach(function (form) {
+        if (!form.querySelector("[data-lang-btn]")) return;
+        form.addEventListener(
+          "submit",
+          function () {
+            form
+              .querySelectorAll("input[data-ref-clone]")
+              .forEach(function (n) {
+                n.remove();
+              });
+            const q = new URLSearchParams(window.location.search);
+            q.forEach(function (value, key) {
+              if (key === "mood" || key === "lang") return;
+              if (!value) return;
+              const input = document.createElement("input");
+              input.type = "hidden";
+              input.name = key;
+              input.value = value;
+              input.setAttribute("data-ref-clone", "1");
+              form.appendChild(input);
+            });
+          },
+          true
+        );
+      });
     }
   })();
 </script>

@@ -31,7 +31,6 @@
     const KEY_ENABLED = "refugio.notifications.enabled";
     const KEY_LAST_SENT_DAY = "refugio.notifications.lastSentDay";
     const KEY_DISMISSED = "refugio.notifications.dismissedAt";
-    const PROMPT_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 2; // 2 days
     const MORNING_START_HOUR = 7;
     const MORNING_END_HOUR = 11;
 
@@ -89,11 +88,14 @@
       panel.classList.remove("hidden");
     }
 
-    const dismissedAt = Number(localStorage.getItem(KEY_DISMISSED) || "0");
+    // El aviso se muestra una sola vez: si ya se descartó (cualquier valor
+    // guardado, incluido el formato antiguo), no vuelve a aparecer.
+    const dismissedRaw = localStorage.getItem(KEY_DISMISSED);
+    const wasDismissed = dismissedRaw !== null && dismissedRaw !== "" && dismissedRaw !== "0";
     const enabled = localStorage.getItem(KEY_ENABLED) === "1";
 
-    if (!enabled && Notification.permission === "default") {
-      if (!dismissedAt || now() - dismissedAt > PROMPT_COOLDOWN_MS) showPrompt();
+    if (!enabled && !wasDismissed && Notification.permission === "default") {
+      showPrompt();
     }
 
     btnEnable.addEventListener("click", async function () {
@@ -106,7 +108,7 @@
     });
 
     btnDismiss.addEventListener("click", function () {
-      localStorage.setItem(KEY_DISMISSED, String(now()));
+      localStorage.setItem(KEY_DISMISSED, String(Date.now()));
       hidePrompt();
     });
 
