@@ -7,11 +7,16 @@ import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import { BibleReader } from "@/components/reader/BibleReader";
 import { parseRef } from "@/lib/domain/refParser";
 import { bookLabel, findCatalogBook } from "@/lib/data/booksCatalog";
+import type { Lang } from "@/lib/domain/types";
 
+// Idioma y ref iniciales: se pasan a la isla para que el primer render del
+// cliente sea idéntico al del servidor (sin hydration mismatch).
+const langParam = Astro.url.searchParams.get("lang");
+const lecturaLang: Lang = langParam === "en" ? "en" : "es";
+const year = new Date().getFullYear();
 // Vista previa al compartir: si la URL trae ?ref=, el OG nombra el pasaje.
 let lecturaOgTitle: string | undefined;
 let lecturaOgDescription: string | undefined;
-const year = new Date().getFullYear();
 const refParam = Astro.url.searchParams.get("ref");
 if (refParam) {
   const parsed = parseRef(refParam);
@@ -59,7 +64,7 @@ if (refParam) {
       <div class="mb-3">
         <StreakBadge />
       </div>
-      <BibleReader client:load />
+      <BibleReader client:load initialLang={lecturaLang} initialRef={refParam} />
     </div>
   </main>
   <footer data-site-footer class="relative z-10 mt-6 w-full border-t border-gold-500/15 sm:mt-8">

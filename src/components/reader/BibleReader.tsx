@@ -33,16 +33,15 @@ type PassageData = {
   translation?: string;
 };
 
-function readInitial(): {
+function readInitial(
+  lang: Lang,
+  refText: string | null
+): {
   lang: Lang;
   bookCode?: string;
   chapter?: number;
   verse?: number;
 } {
-  if (typeof window === "undefined") return { lang: "es" };
-  const q = new URLSearchParams(window.location.search);
-  const lang: Lang = q.get("lang") === "en" ? "en" : "es";
-  const refText = q.get("ref");
   if (!refText) return { lang };
   const parsed = parseRef(refText);
   if (!parsed) return { lang };
@@ -57,8 +56,17 @@ function readInitial(): {
   };
 }
 
-export function BibleReader() {
-  const [init] = useState(readInitial);
+export function BibleReader({
+  initialLang = "es",
+  initialRef = null,
+}: {
+  initialLang?: Lang;
+  initialRef?: string | null;
+}) {
+  // El estado inicial sale de props (parseadas en el servidor con la misma
+  // URL), nunca de window: así el primer render del cliente es idéntico
+  // al SSR y no hay hydration mismatch al cambiar de idioma o ref.
+  const [init] = useState(() => readInitial(initialLang, initialRef));
   const [lang] = useState<Lang>(init.lang);
   const [book, setBook] = useState<CatalogBook | null>(
     () => (init.bookCode ? findCatalogBook(init.bookCode) ?? null : null)
@@ -139,13 +147,19 @@ export function BibleReader() {
   const [nonce, setNonce] = useState(0);
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
   // Tamaño de letra del pasaje: 5 pasos, persistido en localStorage.
+  // Se hidrata a 1 (igual que el SSR) y se sincroniza al montar para evitar
+  // hydration mismatch.
   const FONT_STEPS = ["text-sm", "text-[15px]", "text-base", "text-lg", "text-xl"];
   const FONT_LS_KEY = "refugio.reader.fontStep";
-  const [fontStep, setFontStep] = useState<number>(() => {
-    if (typeof window === "undefined") return 1;
-    const n = Number(window.localStorage.getItem(FONT_LS_KEY));
-    return Number.isInteger(n) && n >= 0 && n < 5 ? n : 1;
-  });
+  const [fontStep, setFontStep] = useState<number>(1);
+  useEffect(() => {
+    try {
+      const n = Number(window.localStorage.getItem(FONT_LS_KEY));
+      if (Number.isInteger(n) && n >= 0 && n < 5) setFontStep(n);
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
   const changeFont = useCallback((delta: number) => {
     setFontStep((prev) => {
       const next = Math.min(4, Math.max(0, prev + delta));
@@ -1184,7 +1198,7 @@ export function BibleReader() {
           ref={textRef}
           className={
             immersive
-              ? "fixed inset-0 z-[90] overflow-y-auto border-white/10 bg-[#060612] px-4 pb-28 pt-2 sm:px-6 sm:pt-3 md:inset-y-[3dvh] md:inset-x-0 md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border md:pb-6"
+              ? "fixed inset-0 z-[90] flex flex-col overflow-hidden border-white/10 bg-[#060612] px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:px-6 md:inset-x-0 md:inset-y-[3dvh] md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border md:pb-6"
               : `scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`
           }
         >
@@ -1192,10 +1206,14 @@ export function BibleReader() {
           <header
             data-reader-sticky
             style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
-            className={`reader-sticky sticky ${immersive ? "top-0" : stickyTop} z-20 -mx-4 mb-2 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
+            className={
+              immersive
+                ? "mb-3 shrink-0 rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 backdrop-blur-md"
+                : `reader-sticky sticky ${stickyTop} z-20 -mx-4 mb-2 flex items-center justify-between gap-2 border-b border-white/10 px-4 py-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:-mx-6 sm:px-6 ${
               isNature ? "bg-[#081208]/88" : "bg-[#0b0f24]/88"
             }`}
           >
+            <div className={immersive ? "mx-auto flex w-full max-w-3xl items-center justify-between gap-2" : "contents"}>
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <button
                 type="button"
@@ -1280,8 +1298,16 @@ export function BibleReader() {
                 <i className="fa-solid fa-link text-xs" aria-hidden />
               </button>
             </div>
+            </div>
           </header>
 
+          <div
+            className={
+              immersive
+                ? "refugio-thin-scroll min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-black/25 p-4 backdrop-blur-md sm:p-5"
+                : "contents"
+            }
+          >
           {loading && (
             <div className="space-y-3 py-4" role="status" aria-live="polite">
               {[70, 95, 88, 92, 60].map((w, i) => (
@@ -1374,10 +1400,11 @@ export function BibleReader() {
               )}
             </>
           )}
+          </div>
           {immersive ? (
             <nav
               aria-label={lang === "es" ? "Capítulos" : "Chapters"}
-              className={`fixed inset-x-0 z-[95] border-t border-white/10 bg-[#060612]/95 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-md transition-[bottom] duration-200 md:hidden ${highlight != null ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]" : "bottom-0"}`}
+              className="fixed inset-x-0 bottom-0 z-[95] border-t border-white/10 bg-[#060612]/95 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-md md:hidden"
             >
               <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-4">
                 <button
@@ -1425,6 +1452,7 @@ export function BibleReader() {
               <MobileVerseQuickBar
                 lang={lang}
                 sanctuary={sanctuary}
+                lifted={immersive}
                 verseRefLabel={`${bookLabel(book, lang)} ${chapter}:${v.n}`}
                 verseText={v.text}
                 verseUrl={`${window.location.origin}${window.location.pathname}?lang=${lang}&ref=${encodeURIComponent(

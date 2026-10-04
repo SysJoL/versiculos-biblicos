@@ -10,6 +10,8 @@ type Props = {
   verseUrl: string;
   onMore: () => void;
   onClear: () => void;
+  /** En lectura inmersiva sube por encima de la barra de capítulos. */
+  lifted?: boolean;
 };
 
 /**
@@ -25,6 +27,7 @@ export function MobileVerseQuickBar({
   verseUrl,
   onMore,
   onClear,
+  lifted = false,
 }: Props) {
   const noop = () => {};
   const { busy, isFav, onExport, onToggleFavorite, onShare } = useVerseMenuActions({
@@ -47,7 +50,7 @@ export function MobileVerseQuickBar({
 
   return (
     <div
-      className="fixed inset-x-3 bottom-3 z-40 md:inset-x-0 md:bottom-6 md:mx-auto md:w-full md:max-w-md md:px-4"
+      className={`fixed inset-x-3 z-[95] transition-[bottom] duration-200 md:inset-x-0 md:bottom-6 md:mx-auto md:w-full md:max-w-md md:px-4 ${lifted ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]" : "bottom-3"}`}
       style={{ paddingBottom: "env(safe-area-inset-bottom,0px)" }}
       role="toolbar"
       aria-label={verseRefLabel}

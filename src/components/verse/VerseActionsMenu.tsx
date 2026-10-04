@@ -49,7 +49,9 @@ export function VerseActionsMenu({
   const [canCopyImage, setCanCopyImage] = useState(false);
   const [sanctuary, setSanctuary] = useState<SanctuaryTheme>("celestial");
   const favKey = favoriteKey(lang, verseRef);
-  const [isFav, setIsFav] = useState(() => isFavorite(favKey));
+  // Igual que el SSR (no favorito) y se sincroniza al montar para evitar
+  // hydration mismatch cuando el versículo sí está guardado.
+  const [isFav, setIsFav] = useState(false);
 
   useEffect(() => {
     setSanctuary(getStoredSanctuary());

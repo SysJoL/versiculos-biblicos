@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Lang, Verse } from "@/lib/domain/types";
 import { labelsFor } from "@/lib/i18n/labels";
 import { VerseRefCache } from "@/lib/cache/VerseRefCache";
@@ -118,8 +118,16 @@ export function VerseCardView({
   actionSlotDesktop,
 }: Props) {
   const [devotionOpen, setDevotionOpen] = useState<DevotionAction | null>(null);
-  const cache = new VerseRefCache();
-  const n = cache.getRecentRefs().length;
+  // Contador igual que el SSR (0) y sincronizado al montar para evitar
+  // hydration mismatch con lo guardado en localStorage.
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    try {
+      setN(new VerseRefCache().getRecentRefs().length);
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
   const L = labelsFor(lang);
   const isLongVerse = verse.text.length > 170 || /\n/.test(verse.text);
 
