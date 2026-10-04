@@ -296,12 +296,14 @@ export function BibleReader() {
     if (!immersive) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    document.body.classList.add("refugio-immersive");
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setImmersive(false);
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.body.classList.remove("refugio-immersive");
       document.removeEventListener("keydown", onKey);
     };
   }, [immersive]);
@@ -1182,12 +1184,12 @@ export function BibleReader() {
           ref={textRef}
           className={
             immersive
-              ? "fixed inset-0 z-[90] overflow-y-auto border-white/10 bg-[#060612] p-4 sm:p-6"
+              ? "fixed inset-0 z-[90] overflow-y-auto border-white/10 bg-[#060612] p-4 sm:p-6 md:inset-y-[3dvh] md:inset-x-0 md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border"
               : `scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`
           }
         >
           {immersive ? (
-            <nav className="sticky top-0 z-30 -mx-4 -mt-4 flex h-12 w-[calc(100%+2rem)] items-center gap-2 border-b border-white/10 bg-[#060612] px-4 text-xs sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6" aria-label="breadcrumb">
+            <nav className="sticky top-0 z-30 -mx-4 -mt-4 flex h-12 w-[calc(100%+2rem)] items-center gap-2 border-b border-white/10 bg-[#060612] px-4 text-xs sm:-mx-6 sm:-mt-6 sm:w-[calc(100%+3rem)] sm:px-6 md:rounded-t-2xl" aria-label="breadcrumb">
               <button
                 type="button"
                 onClick={goBack}
@@ -1199,15 +1201,6 @@ export function BibleReader() {
               <span className="min-w-0 flex-1 truncate text-gold-100/50">
                 {`${bookLabel(book, lang)} · ${L.chapter.toLowerCase()} ${chapter}`}
               </span>
-              <button
-                type="button"
-                onClick={() => setImmersive(false)}
-                aria-label={lang === "es" ? "Salir de lectura inmersiva" : "Exit immersive reading"}
-                title={lang === "es" ? "Salir de lectura inmersiva" : "Exit immersive reading"}
-                className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
-              >
-                <i className="fa-solid fa-compress text-xs" aria-hidden />
-              </button>
             </nav>
           ) : null}
           <div data-reader-sentinel className="h-px" aria-hidden />
