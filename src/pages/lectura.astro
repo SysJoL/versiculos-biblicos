@@ -23,16 +23,27 @@ if (refParam) {
   const parsed = parseRef(refParam);
   const found = parsed ? findCatalogBook(parsed.bookCode) : undefined;
   if (parsed && found) {
-    const label = `${bookLabel(found, "es")} ${parsed.chapter}${parsed.verse ? `:${parsed.verse}` : ""}`;
-    lecturaOgTitle = `${label} — Lectura Bíblica`;
-    lecturaOgDescription = `Lee ${label} completo en español e inglés, con imagen y opciones para compartir.`;
+    const label = `${bookLabel(found, lecturaLang)} ${parsed.chapter}${parsed.verse ? `:${parsed.verse}` : ""}`;
+    lecturaOgTitle = `${label} — ${lecturaLang === "es" ? "Lectura Bíblica" : "Bible Reading"}`;
+    lecturaOgDescription =
+      lecturaLang === "es"
+        ? `Lee ${label} completo en español e inglés, con imagen y opciones para compartir.`
+        : `Read ${label} in full, in Spanish and English, with images and sharing options.`;
   }
 }
+const lecturaTitle =
+  lecturaLang === "es"
+    ? "Lectura Bíblica — Versículos Bíblicos"
+    : "Bible Reading — Bible Verses";
+const lecturaDescription =
+  lecturaLang === "es"
+    ? "Lee capítulos completos de la Biblia en español e inglés. Busca cualquier libro, capítulo o versículo."
+    : "Read full chapters of the Bible in Spanish and English. Search any book, chapter, or verse.";
 ---
 
 <BaseLayout
-  title="Lectura Bíblica — Versículos Bíblicos"
-  description="Lee capítulos completos de la Biblia en español e inglés. Busca cualquier libro, capítulo o versículo."
+  title={lecturaTitle}
+  description={lecturaDescription}
   lang={lecturaLang}
   ogTitle={lecturaOgTitle}
   ogDescription={lecturaOgDescription}

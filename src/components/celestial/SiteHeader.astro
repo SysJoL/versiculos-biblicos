@@ -21,6 +21,18 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
 const favHref = `/favoritos?lang=${currentLang}&mood=${currentMood}`;
 const menuTitle = currentLang === "es" ? "Idioma y favoritos" : "Language & favorites";
 const menuClose = currentLang === "es" ? "Cerrar" : "Close";
+const headerAria =
+  currentLang === "es"
+    ? showMoodBar
+      ? "Categoría e idioma"
+      : "Idioma"
+    : showMoodBar
+      ? "Category and language"
+      : "Language";
+const homeAria = currentLang === "es" ? "Ir al inicio" : "Go to home";
+const readerAria = currentLang === "es" ? "Lectura bíblica" : "Bible reading";
+const favAria = currentLang === "es" ? "Versículos favoritos" : "Favorite verses";
+const logoAlt = currentLang === "es" ? "Logo Refugio Celestial" : "Refugio Celestial logo";
 // El formulario de idioma (GET) reemplaza la query; conservamos el contexto
 // actual (p. ej. `ref` en /lectura) para no perder la vista al cambiar idioma.
 const preserved = Astro.url?.searchParams
@@ -33,7 +45,7 @@ const preserved = Astro.url?.searchParams
 <header
   data-site-header
   class="refugio-sticky-nav fixed top-0 right-0 left-0 z-50 border-b border-gold-500/20 bg-transparent pt-[env(safe-area-inset-top,0px)] backdrop-blur-md supports-[backdrop-filter]:bg-black/[0.04]"
-  aria-label={showMoodBar ? "Categoría e idioma" : "Idioma"}
+  aria-label={headerAria}
 >
   <div
     class="relative mx-auto flex min-h-11 w-full max-w-[1600px] flex-row items-center gap-2 px-3 py-2 max-md:min-h-14 max-md:py-3 sm:gap-4 sm:px-5 sm:py-2.5 md:grid md:min-h-0 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-5 md:gap-y-0 md:px-6 md:py-3 lg:gap-x-8 lg:px-10 lg:py-3"
@@ -42,7 +54,7 @@ const preserved = Astro.url?.searchParams
       <a
         href={homeHref}
         class="focus-ring flex min-w-0 items-center gap-2 rounded-xl"
-        aria-label="Ir al inicio"
+        aria-label={homeAria}
       >
       <div class="relative h-9 w-9 lg:h-10 lg:w-10">
         <img
@@ -56,7 +68,7 @@ const preserved = Astro.url?.searchParams
         <img
           data-site-brand-logo
           src="/img/logo-refugio-celestial-best.png"
-          alt="Logo Refugio Celestial"
+          alt={logoAlt}
           class="absolute inset-0 h-full w-full rounded-full border border-gold-500/30 object-cover opacity-100 transition-all duration-200"
           loading="lazy"
         />
@@ -73,7 +85,7 @@ const preserved = Astro.url?.searchParams
       <a
         href={homeHref}
         class="focus-ring flex items-center gap-2 rounded-xl"
-        aria-label="Ir al inicio"
+        aria-label={homeAria}
       >
       <div class="relative h-10 w-10">
         <img
@@ -87,7 +99,7 @@ const preserved = Astro.url?.searchParams
         <img
           data-site-brand-logo
           src="/img/logo-refugio-celestial-best.png"
-          alt="Logo Refugio Celestial"
+          alt={logoAlt}
           class="absolute inset-0 h-full w-full rounded-full border border-gold-500/30 object-cover opacity-100 transition-all duration-200"
           loading="lazy"
         />
@@ -121,28 +133,28 @@ const preserved = Astro.url?.searchParams
       <a
         href={`/lectura?lang=${currentLang}`}
         class="focus-ring inline-flex h-10 w-10 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
-        aria-label="Lectura bíblica"
-        title="Lectura bíblica"
+        aria-label={readerAria}
+        title={readerAria}
       >
         <i class="fa-solid fa-book-open text-sm text-gold-300/95" aria-hidden="true"></i>
-        <span class="sr-only">Lectura bíblica</span>
+        <span class="sr-only">{readerAria}</span>
       </a>
       )}
       {showFavoritesLink && (
       <a
         href={favHref}
         class="focus-ring hidden h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55 md:inline-flex"
-        aria-label="Versículos favoritos"
-        title="Versículos favoritos"
+        aria-label={favAria}
+        title={favAria}
       >
         <i class="fa-solid fa-heart text-sm text-gold-300/95" aria-hidden="true"></i>
-        <span class="sr-only">Versículos favoritos</span>
+        <span class="sr-only">{favAria}</span>
       </a>
       )}
       <div class="hidden md:block">
         <LanguageBar currentMood={currentMood} />
       </div>
-      <VisualSanctuarySwitcher client:load inline />
+      <VisualSanctuarySwitcher client:load inline lang={currentLang} />
       <button
         type="button"
         id="refugio-more-open"

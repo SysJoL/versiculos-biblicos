@@ -7,11 +7,19 @@ import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import { parseLang } from "@/lib/i18n/lang";
 
 const currentLang = parseLang(Astro.url.searchParams.get("lang"));
+const favTitle =
+  currentLang === "es"
+    ? "Favoritos — Versículos Bíblicos"
+    : "Favorites — Bible Verses";
+const favDescription =
+  currentLang === "es"
+    ? "Tus versículos guardados, disponibles sin conexión."
+    : "Your saved verses, available offline.";
 ---
 
 <BaseLayout
-  title="Favoritos — Versículos Bíblicos"
-  description="Tus versículos guardados, disponibles sin conexión."
+  title={favTitle}
+  description={favDescription}
   lang={currentLang}
 >
   <CosmicBackground client:idle />

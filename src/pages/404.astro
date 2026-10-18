@@ -6,11 +6,16 @@ import { parseLang } from "@/lib/i18n/lang";
 
 Astro.response.status = 404;
 const currentLang = parseLang(Astro.url.searchParams.get("lang"));
+const notFoundTitle = `404 — ${currentLang === "es" ? "Versículos Bíblicos" : "Bible Verses"}`;
+const notFoundDescription =
+  currentLang === "es"
+    ? "La página solicitada no fue encontrada."
+    : "The page you requested was not found.";
 ---
 
 <BaseLayout
-  title="404 — Versículos Bíblicos"
-  description="La página solicitada no fue encontrada."
+  title={notFoundTitle}
+  description={notFoundDescription}
   lang={currentLang}
 >
   <CosmicBackground client:idle />

@@ -4,8 +4,15 @@ import {
   SANCTUARY_LS_KEY,
   type SanctuaryTheme,
 } from "@/lib/ui/sanctuary";
+import type { Lang } from "@/lib/domain/types";
 
-export default function VisualSanctuarySwitcher({ inline = false }: { inline?: boolean }) {
+export default function VisualSanctuarySwitcher({
+  inline = false,
+  lang = "es",
+}: {
+  inline?: boolean;
+  lang?: Lang;
+}) {
   const [theme, setTheme] = useState<SanctuaryTheme>("celestial");
   const [mounted, setMounted] = useState(false);
 
@@ -41,8 +48,12 @@ export default function VisualSanctuarySwitcher({ inline = false }: { inline?: b
       // Informative soft toast
       showToast(
         next === "nature"
-          ? "Santuario: Bosque de Meditación"
-          : "Santuario: Noche Celestial",
+          ? lang === "es"
+            ? "Santuario: Bosque de Meditación"
+            : "Sanctuary: Meditation Forest"
+          : lang === "es"
+            ? "Santuario: Noche Celestial"
+            : "Sanctuary: Celestial Night",
         "success",
         1800
       );
@@ -53,8 +64,12 @@ export default function VisualSanctuarySwitcher({ inline = false }: { inline?: b
 
   const titleText =
     theme === "celestial"
-      ? "Cambiar a Santuario Bosque"
-      : "Cambiar a Santuario Celestial";
+      ? lang === "es"
+        ? "Cambiar a Santuario Bosque"
+        : "Switch to Forest Sanctuary"
+      : lang === "es"
+        ? "Cambiar a Santuario Celestial"
+        : "Switch to Celestial Sanctuary";
 
   return (
     <div

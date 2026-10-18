@@ -1,11 +1,14 @@
 ---
 import type { Mood } from "@/lib/domain/types";
+import { parseLang } from "@/lib/i18n/lang";
 
 interface Props {
   currentMood: Mood;
 }
 
 const { currentMood } = Astro.props;
+const currentLang = parseLang(Astro.url?.searchParams.get("lang") ?? null);
+const groupLabel = currentLang === "es" ? "Idioma" : "Language";
 
 // El formulario (GET) reemplaza la query; conservamos los params del contexto
 // actual (p. ej. `ref` en /lectura) para no perder la vista al cambiar idioma.
@@ -16,7 +19,7 @@ const preserved = Astro.url?.searchParams
   : [];
 ---
 
-<div class="flex items-center" role="group" aria-label="Idioma">
+<div class="flex items-center" role="group" aria-label={groupLabel}>
   <form
     method="get"
     class="flex items-center gap-1 rounded-xl border border-gold-500/30 bg-black/40 p-0.5 shadow-inner ring-1 ring-inset ring-white/5 backdrop-blur-sm sm:gap-1.5 sm:p-1"

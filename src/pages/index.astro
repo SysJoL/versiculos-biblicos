@@ -14,10 +14,6 @@ import { getSsgInitialVerse } from "@/lib/providers/verseServiceFactory";
 import type { Lang, Mood } from "@/lib/domain/types";
 import { parseLang } from "@/lib/i18n/lang";
 
-const buildLang: Lang = "es";
-const buildMood: Mood = "all";
-const initial = getSsgInitialVerse(buildLang, buildMood);
-
 // Estado activo real desde la URL (?lang/?mood). Los filtros son GET
 // completos, así que el servidor debe pintar el active correcto.
 const ALLOWED_MOODS: Mood[] = ["all", "comfort", "wisdom", "hope", "love", "repentance"];
@@ -26,15 +22,28 @@ const rawMood = Astro.url.searchParams.get("mood");
 const currentLang: Lang = parseLang(rawLang);
 const currentMood: Mood = ALLOWED_MOODS.includes(rawMood as Mood) ? (rawMood as Mood) : "all";
 const year = new Date().getFullYear();
-// Vista previa al compartir: el versículo inicial (SSR, español) como OG.
+const initial = getSsgInitialVerse(currentLang, currentMood);
+// Vista previa al compartir: el versículo inicial (SSR, según idioma) como OG.
 const ogVerseText = initial.text.length > 160 ? `${initial.text.slice(0, 157)}…` : initial.text;
-const ogTitle = `${initial.ref} — Versículos Bíblicos`;
-const ogDescription = `“${ogVerseText}” Medita, ora y descarga el versículo del día.`;
+const brandName = currentLang === "es" ? "Versículos Bíblicos" : "Bible Verses";
+const ogTitle = `${initial.ref} — ${brandName}`;
+const ogDescription =
+  currentLang === "es"
+    ? `“${ogVerseText}” Medita, ora y descarga el versículo del día.`
+    : `“${ogVerseText}” Meditate, pray, and download the verse of the day.`;
+const pageTitle =
+  currentLang === "es"
+    ? "Versículos Bíblicos — Meditación bíblica"
+    : "Bible Verses — Biblical meditation";
+const pageDescription =
+  currentLang === "es"
+    ? "Medita, ora y descarga un versículo. Español e inglés, categorías y API bíblica con respaldo local."
+    : "Meditate, pray, and download a verse. Spanish and English, categories, and Bible API with an offline fallback.";
 ---
 
 <BaseLayout
-  title="Versículos Bíblicos — Meditación bíblica"
-  description="Medita, ora y descarga un versículo. Español e inglés, categorías y API bíblica con respaldo local."
+  title={pageTitle}
+  description={pageDescription}
   lang={currentLang}
   ogTitle={ogTitle}
   ogDescription={ogDescription}

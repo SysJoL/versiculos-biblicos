@@ -6,11 +6,16 @@ import { parseLang } from "@/lib/i18n/lang";
 
 Astro.response.status = 500;
 const currentLang = parseLang(Astro.url.searchParams.get("lang"));
+const errorTitle = `500 — ${currentLang === "es" ? "Versículos Bíblicos" : "Bible Verses"}`;
+const errorDescription =
+  currentLang === "es"
+    ? "Ocurrió un problema inesperado en la aplicación."
+    : "An unexpected problem occurred in the app.";
 ---
 
 <BaseLayout
-  title="500 — Versículos Bíblicos"
-  description="Ocurrió un problema inesperado en la aplicación."
+  title={errorTitle}
+  description={errorDescription}
   lang={currentLang}
 >
   <CosmicBackground client:idle />

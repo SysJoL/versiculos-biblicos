@@ -15,7 +15,7 @@ interface Props {
   ogUrl?: string;
 }
 
-const { title, description = "Meditación bíblica con versículo del día y descarga de imagen.", lang = "es", ogTitle, ogDescription, ogImage = "/img/logo-refugio-celestial-best.png", ogUrl } = Astro.props;
+const { title, lang = "es", description = lang === "es" ? "Meditación bíblica con versículo del día y descarga de imagen." : "Biblical meditation with a daily verse and image download.", ogTitle, ogDescription, ogImage = "/img/logo-refugio-celestial-best.png", ogUrl } = Astro.props;
 const shareTitle = ogTitle ?? title;
 const shareDescription = ogDescription ?? description;
 

@@ -59,6 +59,10 @@
       createToast(ev.detail || {});
     });
 
+    function isEn() {
+      return document.documentElement.getAttribute("data-url-lang") === "en";
+    }
+
     function isBenign(text) {
       if (!text) return true;
       return (
@@ -99,7 +103,9 @@
       if (shouldShow(`err:${msg}`, 8000)) {
         createToast({
           kind: "error",
-          message: "Ocurrió un error inesperado en la aplicación.",
+          message: isEn()
+            ? "An unexpected error occurred in the app."
+            : "Ocurrió un error inesperado en la aplicación.",
         });
       }
     });
@@ -118,7 +124,9 @@
       if (shouldShow(`rej:${msg}`, 8000)) {
         createToast({
           kind: "error",
-          message: "Falló una operación del sistema. Intenta nuevamente.",
+          message: isEn()
+            ? "A system operation failed. Please try again."
+            : "Falló una operación del sistema. Intenta nuevamente.",
         });
       }
     });
