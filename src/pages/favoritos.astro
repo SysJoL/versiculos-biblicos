@@ -42,7 +42,7 @@ const currentLang = parseLang(Astro.url.searchParams.get("lang"));
             <span class="i18n-en hidden" aria-hidden="true">No favorites yet. Tap the heart on any verse to save it here.</span>
           </p>
           <a
-            href="/"
+            href={`/?lang=${currentLang}`}
             class="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-gold-500/40 bg-gold-500/10 px-6 py-2 text-sm font-semibold text-gold-100 transition hover:border-gold-400 hover:bg-gold-500/20"
           >
             <span class="i18n-es">Ver el versículo del día</span>
@@ -55,7 +55,7 @@ const currentLang = parseLang(Astro.url.searchParams.get("lang"));
     </div>
     <footer class="mt-6 border-t border-gold-500/15 pt-3 text-center text-xs text-gold-300/70">
       <a
-        href="/"
+        href={`/?lang=${currentLang}`}
         class="font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
       >
         <i class="fa-solid fa-arrow-left mr-1" aria-hidden></i>

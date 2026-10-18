@@ -42,14 +42,14 @@ const currentLang = parseLang(Astro.url.searchParams.get("lang"));
       </blockquote>
       <div class="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-3">
         <a
-          href="/"
+          href={`/?lang=${currentLang}`}
           class="inline-flex min-h-11 items-center justify-center rounded-full border border-gold-500/40 bg-gold-500/10 px-6 py-2 text-sm font-semibold text-gold-100 transition hover:border-gold-400 hover:bg-gold-500/20"
         >
           <span class="i18n-es">Volver al inicio</span>
           <span class="i18n-en hidden" aria-hidden="true">Back to home</span>
         </a>
         <a
-          href="/lectura"
+          href={`/lectura?lang=${currentLang}`}
           class="inline-flex min-h-11 items-center justify-center rounded-full border border-gold-500/25 bg-black/25 px-6 py-2 text-sm font-semibold text-gold-100/90 transition hover:border-gold-500/40 hover:bg-black/35"
         >
           <span class="i18n-es">Ir a la lectura bíblica</span>

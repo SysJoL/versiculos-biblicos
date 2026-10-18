@@ -21,6 +21,13 @@ const homeHref = `/?lang=${currentLang}&mood=${currentMood}`;
 const favHref = `/favoritos?lang=${currentLang}&mood=${currentMood}`;
 const menuTitle = currentLang === "es" ? "Idioma y favoritos" : "Language & favorites";
 const menuClose = currentLang === "es" ? "Cerrar" : "Close";
+// El formulario de idioma (GET) reemplaza la query; conservamos el contexto
+// actual (p. ej. `ref` en /lectura) para no perder la vista al cambiar idioma.
+const preserved = Astro.url?.searchParams
+  ? [...Astro.url.searchParams.entries()].filter(
+      ([k]) => k !== "lang" && k !== "mood"
+    )
+  : [];
 ---
 
 <header
@@ -112,7 +119,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
       </div>
       {showReaderLink && (
       <a
-        href="/lectura"
+        href={`/lectura?lang=${currentLang}`}
         class="focus-ring inline-flex h-10 w-10 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
         aria-label="Lectura bíblica"
         title="Lectura bíblica"
@@ -123,7 +130,7 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
       )}
       {showFavoritesLink && (
       <a
-        href="/favoritos"
+        href={favHref}
         class="focus-ring hidden h-10 w-10 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55 md:inline-flex"
         aria-label="Versículos favoritos"
         title="Versículos favoritos"
@@ -161,6 +168,9 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
   >
     <form method="get" action="" class="col-span-full">
       <input type="hidden" name="mood" value={currentMood} />
+      {preserved.map(([k, v]) => (
+        <input type="hidden" name={k} value={v} />
+      ))}
       <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-200/60">
         <span class="i18n-es">Idioma</span>
         <span class="i18n-en hidden" aria-hidden="true">Language</span>

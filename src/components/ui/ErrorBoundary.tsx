@@ -86,7 +86,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {t.retry}
           </button>
           <a
-            href="/"
+            href={`/?lang=${lang}`}
             className="inline-flex min-h-11 items-center justify-center rounded-full border border-gold-500/25 bg-black/25 px-6 py-2 text-sm font-semibold text-gold-100/90 transition hover:border-gold-500/40 hover:bg-black/35"
           >
             {t.home}

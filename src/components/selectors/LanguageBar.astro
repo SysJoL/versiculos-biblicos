@@ -6,6 +6,14 @@ interface Props {
 }
 
 const { currentMood } = Astro.props;
+
+// El formulario (GET) reemplaza la query; conservamos los params del contexto
+// actual (p. ej. `ref` en /lectura) para no perder la vista al cambiar idioma.
+const preserved = Astro.url?.searchParams
+  ? [...Astro.url.searchParams.entries()].filter(
+      ([k]) => k !== "lang" && k !== "mood"
+    )
+  : [];
 ---
 
 <div class="flex items-center" role="group" aria-label="Idioma">
@@ -20,6 +28,9 @@ const { currentMood } = Astro.props;
       name="mood"
       value={currentMood}
     />
+    {preserved.map(([k, v]) => (
+      <input type="hidden" name={k} value={v} />
+    ))}
     <button
       type="submit"
       name="lang"
