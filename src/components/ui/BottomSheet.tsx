@@ -1,6 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
+import { useFocusTrap } from "@/lib/ui/useFocusTrap";
+
+/** Duración de la salida; debe cubrir la transición más larga (panel 340ms). */
+const SHEET_EXIT_MS = 380;
 
 type BottomSheetProps = {
   isOpen: boolean;
@@ -35,6 +39,33 @@ export function BottomSheet({
   panelClassName = "md:max-w-xl",
   sanctuary = "celestial",
 }: BottomSheetProps) {
+  const panelRef = useRef<HTMLElement>(null);
+  useFocusTrap(isOpen, panelRef);
+
+  // Se mantiene montado durante la animación de salida y se desmonta al
+  // terminar; el estado "open" se aplica un frame después para animar la entrada.
+  const [mounted, setMounted] = useState(false);
+  const [sheetState, setSheetState] = useState<"closed" | "open">("closed");
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      // Doble rAF: asegura que el panel se pinte en estado "closed" antes de
+      // pasar a "open", de lo contrario la transición no se dispara.
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setSheetState("open"));
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+      };
+    }
+    setSheetState("closed");
+    const timer = window.setTimeout(() => setMounted(false), SHEET_EXIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (ev: KeyboardEvent) => {
@@ -57,7 +88,7 @@ export function BottomSheet({
     };
   }, [isOpen]);
 
-  if (!isOpen || typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   const isNature = sanctuary === "nature";
   const panelBg = isNature ? "bg-[#081208]" : "bg-[#0b1024]";
@@ -72,15 +103,18 @@ export function BottomSheet({
 
   return createPortal(
     <div
-      className={`fixed inset-0 ${zIndexClassName} flex items-end justify-center bg-[#04060f]/84 px-0 backdrop-blur-[2px] md:items-center md:px-4`}
+      data-refugio-bsheet
+      data-state={sheetState}
+      className={`refugio-bsheet fixed inset-0 ${zIndexClassName} flex items-end justify-center bg-[rgb(var(--refugio-scrim)/0.84)] px-0 backdrop-blur-[2px] md:items-center md:px-4`}
       onClick={onClose}
     >
       <section
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        className={`flex w-full min-h-0 flex-col rounded-t-2xl border border-b-0 text-gold-100 shadow-[0_24px_64px_rgba(0,0,0,0.72)] transition-colors duration-700 md:max-w-md md:rounded-2xl md:border ${panelBg} ${panelBorder} ${maxHeightClassName} ${panelClassName}`.trim()}
+        className={`refugio-bsheet-panel flex w-full min-h-0 flex-col rounded-t-2xl border border-b-0 text-gold-100 shadow-[0_24px_64px_rgba(0,0,0,0.72)] md:max-w-md md:rounded-2xl md:border ${panelBg} ${panelBorder} ${maxHeightClassName} ${panelClassName}`.trim()}
       >
         <div className="flex justify-center pt-2 md:hidden">
           <span className={`h-1 w-12 rounded-full transition-colors duration-700 ${handleColor}`} aria-hidden />
@@ -122,7 +156,7 @@ export function BottomSheet({
           <div
             className={`relative z-[1] ${
               bodyBackgroundImageUrl
-                ? "flex w-full max-w-2xl items-center justify-center rounded-xl border border-gold-400/45 bg-[#030712]/90 p-5 text-center text-[#f4c95d] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)] md:p-7"
+                ? "flex w-full max-w-2xl items-center justify-center rounded-xl border border-gold-400/45 bg-[rgb(var(--refugio-base)/0.9)] p-5 text-center text-[#f4c95d] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)] md:p-7"
                 : ""
             }`.trim()}
           >

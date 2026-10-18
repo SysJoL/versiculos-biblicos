@@ -12,6 +12,7 @@ import CategoryCombobox from "@/components/selectors/CategoryCombobox.astro";
 import { VerseCard } from "@/components/verse/VerseCard";
 import { getSsgInitialVerse } from "@/lib/providers/verseServiceFactory";
 import type { Lang, Mood } from "@/lib/domain/types";
+import { parseLang } from "@/lib/i18n/lang";
 
 const buildLang: Lang = "es";
 const buildMood: Mood = "all";
@@ -22,7 +23,7 @@ const initial = getSsgInitialVerse(buildLang, buildMood);
 const ALLOWED_MOODS: Mood[] = ["all", "comfort", "wisdom", "hope", "love", "repentance"];
 const rawLang = Astro.url.searchParams.get("lang");
 const rawMood = Astro.url.searchParams.get("mood");
-const currentLang: Lang = rawLang === "en" ? "en" : "es";
+const currentLang: Lang = parseLang(rawLang);
 const currentMood: Mood = ALLOWED_MOODS.includes(rawMood as Mood) ? (rawMood as Mood) : "all";
 const year = new Date().getFullYear();
 // Vista previa al compartir: el versículo inicial (SSR, español) como OG.
@@ -42,6 +43,8 @@ const ogDescription = `“${ogVerseText}” Medita, ora y descarga el versículo
   <SiteHeader currentLang={currentLang} currentMood={currentMood} hideDesktopMoodBar hideMobileMoodBar />
   <EntrySplash lang={currentLang} />
   <main
+    id="main-content"
+    tabindex="-1"
     class="pointer-events-auto relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3 pb-8 pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:px-4 sm:pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-6 md:pb-10 md:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:max-w-6xl lg:px-8"
   >
     <div class="mx-auto mt-2 flex min-h-0 w-full max-w-[956px] flex-1 items-start justify-center gap-6 py-2 sm:py-3 lg:items-stretch">

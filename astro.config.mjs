@@ -31,7 +31,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["img/logo-refugio-celestial-best.png"],
       manifest: {
-        name: "BVerses",
+        name: "Versículos Bíblicos",
         short_name: "BVerses",
         description:
           "Meditación bíblica con versículos, categorías y modo offline básico.",
@@ -49,7 +49,7 @@ export default defineConfig({
             url: "/",
             icons: [
               {
-                src: "/img/logo-refugio-celestial-best.png",
+                src: "/img/icon-192.png",
                 sizes: "192x192",
                 type: "image/png",
               },
@@ -62,7 +62,7 @@ export default defineConfig({
             url: "/lectura",
             icons: [
               {
-                src: "/img/logo-refugio-celestial-best.png",
+                src: "/img/icon-192.png",
                 sizes: "192x192",
                 type: "image/png",
               },
@@ -71,16 +71,22 @@ export default defineConfig({
         ],
         icons: [
           {
-            src: "/img/logo-refugio-celestial-best.png",
+            src: "/img/icon-192.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
           },
           {
-            src: "/img/logo-refugio-celestial-best.png",
+            src: "/img/icon-512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
+          },
+          {
+            src: "/img/icon-maskable-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
       },

@@ -266,31 +266,23 @@ const menuClose = currentLang === "es" ? "Cerrar" : "Close";
       if (sheet.parentElement !== document.body) document.body.appendChild(sheet);
       let prevOverflow = "";
       let prevTouch = "";
-      const isHidden = () => sheet.classList.contains("hidden");
+      const isHidden = () => sheet.dataset.state !== "open";
       const open = () => {
-        sheet.classList.remove("hidden");
-        sheet.classList.add("flex");
-        requestAnimationFrame(() => {
-          panel.classList.remove("translate-y-full");
-          panel.classList.add("translate-y-0");
-        });
-        sheet.setAttribute("aria-hidden", "false");
+        window.__refugioSheet?.open(sheet);
         openBtn.setAttribute("aria-expanded", "true");
         prevOverflow = document.body.style.overflow;
         prevTouch = document.body.style.touchAction;
         document.body.style.overflow = "hidden";
         document.body.style.touchAction = "none";
         refreshFavCount();
+        requestAnimationFrame(() => window.__refugioDialog?.open(panel));
       };
       const close = () => {
-        panel.classList.remove("translate-y-0");
-        panel.classList.add("translate-y-full");
-        sheet.classList.remove("flex");
-        sheet.classList.add("hidden");
-        sheet.setAttribute("aria-hidden", "true");
+        window.__refugioSheet?.close(sheet);
         openBtn.setAttribute("aria-expanded", "false");
         document.body.style.overflow = prevOverflow;
         document.body.style.touchAction = prevTouch;
+        window.__refugioDialog?.close();
       };
       openBtn.addEventListener("click", () => (isHidden() ? open() : close()));
       closeBtn.addEventListener("click", close);

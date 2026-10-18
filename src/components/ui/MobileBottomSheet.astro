@@ -21,23 +21,25 @@ const closeId = `${id}-close`;
 
 <div
   id={id}
-  class={`fixed inset-0 hidden flex-col items-stretch justify-end bg-[#04060f]/80 backdrop-blur-[2px] ${zIndexClass}`.trim()}
+  data-refugio-sheet
+  data-state="closed"
+  class={`refugio-sheet fixed inset-0 flex flex-col items-stretch justify-end bg-[rgb(var(--refugio-scrim)/0.8)] backdrop-blur-[2px] ${zIndexClass}`.trim()}
   aria-hidden="true"
 >
   <section
     id={panelId}
-    class={`mt-auto flex w-full translate-y-full flex-col overflow-hidden rounded-t-2xl border border-gold-400/55 border-b-0 bg-[#0b1024] text-gold-100 shadow-[0_-12px_34px_rgba(0,0,0,0.5)] transition-transform duration-200 ease-out ${maxHeightClass}`.trim()}
+    class={`refugio-sheet-panel mt-auto flex w-full flex-col overflow-hidden rounded-t-2xl border border-[rgb(var(--refugio-accent)/0.55)] border-b-0 bg-[rgb(var(--refugio-surface))] text-[rgb(var(--refugio-text))] shadow-[0_-12px_34px_rgba(0,0,0,0.5)] ${maxHeightClass}`.trim()}
     role="dialog"
     aria-modal="true"
     aria-label={title}
   >
-    <div class="mx-auto mt-2 h-1 w-11 rounded-full bg-gold-200/35" aria-hidden="true"></div>
-    <header class="relative flex items-center justify-center border-b border-gold-500/25 px-4 py-2">
-      <h3 class="text-center font-display text-xs uppercase tracking-[0.1em] text-gold-200">{title}</h3>
+    <div class="mx-auto mt-2 h-1 w-11 rounded-full bg-[rgb(var(--refugio-accent)/0.35)]" aria-hidden="true"></div>
+    <header class="relative flex items-center justify-center border-b border-[rgb(var(--refugio-accent)/0.25)] px-4 py-2">
+      <h3 class="text-center font-display text-xs uppercase tracking-[0.1em] text-[rgb(var(--refugio-text))]">{title}</h3>
       <button
         type="button"
         id={closeId}
-        class="absolute right-4 top-[35%] inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gold-500/40 bg-transparent text-gold-200"
+        class="absolute right-4 top-[35%] inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[rgb(var(--refugio-accent)/0.4)] bg-transparent text-[rgb(var(--refugio-text))]"
         aria-label={closeLabel}
       >
         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
@@ -49,3 +51,90 @@ const closeId = `${id}-close`;
     <slot name="footer" />
   </section>
 </div>
+
+<style is:global>
+  /* Entrada/salida del bottom sheet móvil. El estado vive en el atributo
+     data-state del root; el panel entra y sale por abajo (mismo camino).
+     Solo se animan transform y opacity. */
+  .refugio-sheet {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 240ms var(--ease-out),
+      visibility 240ms var(--ease-out);
+  }
+  .refugio-sheet[data-state="open"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  .refugio-sheet-panel {
+    transform: translateY(100%);
+    transition: transform 340ms var(--ease-drawer);
+  }
+  .refugio-sheet[data-state="open"] .refugio-sheet-panel {
+    transform: translateY(0);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .refugio-sheet {
+      transition:
+        opacity 180ms ease,
+        visibility 180ms ease;
+    }
+    .refugio-sheet-panel,
+    .refugio-sheet[data-state="open"] .refugio-sheet-panel {
+      transform: none;
+      transition: opacity 180ms ease;
+    }
+  }
+</style>
+
+<script>
+  import { activateFocusTrap } from "@/lib/ui/focusTrap";
+
+  type DialogApi = {
+    _deactivate: (() => void) | null;
+    open: (root: HTMLElement) => void;
+    close: () => void;
+  };
+
+  type SheetApi = {
+    open: (root: HTMLElement) => void;
+    close: (root: HTMLElement) => void;
+  };
+
+  const w = window as unknown as {
+    __refugioDialog?: DialogApi;
+    __refugioSheet?: SheetApi;
+  };
+
+  if (!w.__refugioDialog) {
+    const api: DialogApi = {
+      _deactivate: null,
+      open(root) {
+        if (!root) return;
+        api._deactivate?.();
+        api._deactivate = activateFocusTrap(root);
+      },
+      close() {
+        api._deactivate?.();
+        api._deactivate = null;
+      },
+    };
+    w.__refugioDialog = api;
+  }
+
+  if (!w.__refugioSheet) {
+    w.__refugioSheet = {
+      open(root) {
+        root.dataset.state = "open";
+        root.setAttribute("aria-hidden", "false");
+      },
+      close(root) {
+        root.dataset.state = "closed";
+        root.setAttribute("aria-hidden", "true");
+      },
+    };
+  }
+</script>

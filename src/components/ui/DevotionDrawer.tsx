@@ -1,6 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
+import { useFocusTrap } from "@/lib/ui/useFocusTrap";
+
+/** Duración de la salida; debe cubrir la transición del panel (340ms). */
+const DRAWER_EXIT_MS = 380;
 
 export type DevotionAction = "meditate" | "pray" | "reflect";
 
@@ -42,6 +46,33 @@ export function DevotionDrawer({
   zIndexClassName = "z-[95]",
   sanctuary = "celestial",
 }: DevotionDrawerProps) {
+  const panelRef = useRef<HTMLElement>(null);
+  useFocusTrap(isOpen, panelRef);
+
+  // Montado durante la salida, desmontado al terminar; "open" un frame
+  // después para animar la entrada.
+  const [mounted, setMounted] = useState(false);
+  const [drawerState, setDrawerState] = useState<"closed" | "open">("closed");
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      // Doble rAF: pinta el panel en "closed" antes de pasar a "open" para que
+      // la transición de entrada se dispare.
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setDrawerState("open"));
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+      };
+    }
+    setDrawerState("closed");
+    const timer = window.setTimeout(() => setMounted(false), DRAWER_EXIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (ev: KeyboardEvent) => {
@@ -63,7 +94,7 @@ export function DevotionDrawer({
     };
   }, [isOpen]);
 
-  if (!isOpen || typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   const isNature = sanctuary === "nature";
   const panelBg = isNature ? "bg-[#081208]" : "bg-[#0b1024]";
@@ -81,19 +112,19 @@ export function DevotionDrawer({
 
   return createPortal(
     <div
-      className={`fixed inset-0 ${zIndexClassName} bg-[#04060f]/70 backdrop-blur-[2px]`}
+      data-refugio-ddrawer
+      data-state={drawerState}
+      className={`refugio-ddrawer fixed inset-0 ${zIndexClassName} bg-[rgb(var(--refugio-scrim)/0.7)] backdrop-blur-[2px]`}
       onClick={onClose}
     >
-      <style>{`@keyframes devotion-drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}
-@media (prefers-reduced-motion: reduce){.devotion-drawer-panel{animation:none !important}}`}</style>
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={title}
         data-devotion-action={action}
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        className={`devotion-drawer-panel absolute right-0 top-0 flex h-dvh w-[min(92vw,24rem)] min-h-0 flex-col border-l text-gold-100 shadow-[-24px_0_64px_rgba(0,0,0,0.6)] ${panelBg} ${panelBorder}`}
-        style={{ animation: "devotion-drawer-in 0.32s cubic-bezier(0.32, 0.72, 0, 1)" }}
+        className={`refugio-ddrawer-panel absolute right-0 top-0 flex h-dvh w-[min(92vw,24rem)] min-h-0 flex-col border-l text-gold-100 shadow-[-24px_0_64px_rgba(0,0,0,0.6)] ${panelBg} ${panelBorder}`}
       >
         <header className={`flex items-center gap-3 border-b px-4 pb-3 pt-4 ${accentBorder}`}>
           <span

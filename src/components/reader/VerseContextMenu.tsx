@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Lang } from "@/lib/domain/types";
 import type { SanctuaryTheme } from "@/lib/ui/sanctuary";
+import { useFocusTrap } from "@/lib/ui/useFocusTrap";
 import { useVerseMenuActions } from "./useVerseMenuActions";
 import { VerseActionItems } from "./VerseActionItems";
 
@@ -29,6 +30,8 @@ export function VerseContextMenu({
   onClose,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
+  // Menú no modal: mueve el foco dentro y lo restaura al cerrar, sin confinar Tab.
+  useFocusTrap(true, boxRef, { focusContainer: false, trapTab: false });
   const {
     t,
     busy,

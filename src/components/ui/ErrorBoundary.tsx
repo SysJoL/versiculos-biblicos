@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <section
         role="alert"
-        className="mx-auto w-full max-w-xl rounded-2xl border border-gold-500/25 bg-[#0e132d]/70 p-6 text-center shadow-[0_0_22px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-8"
+        className="mx-auto w-full max-w-xl rounded-2xl border border-gold-500/25 bg-[rgb(var(--refugio-surface-card)/0.7)] p-6 text-center shadow-[0_0_22px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-8"
       >
         <img
           src="/img/logo-refugio-celestial-best.png"

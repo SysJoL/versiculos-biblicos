@@ -7,8 +7,141 @@
     @apply antialiased;
   }
   body {
-    @apply min-h-screen text-gold-200/95 font-body;
+    @apply min-h-dvh text-gold-200/95 font-body;
     background: radial-gradient(ellipse 120% 80% at 50% 0%, #1a1b3a 0%, #0a0b14 45%, #05060c 100%);
+  }
+}
+
+/* Tokens de tema del Santuario. Se definen en :root (default = celestial) y se
+   sobreescriben con html[data-sanctuary="nature"]. Valores en canales RGB para
+   poder aplicarlos con alfa: rgba(var(--refugio-surface) / 0.95). */
+:root,
+html[data-sanctuary="celestial"] {
+  --refugio-base: 6 6 18;
+  --refugio-surface: 11 16 36;
+  --refugio-surface-2: 15 18 40;
+  --refugio-surface-card: 14 19 45;
+  --refugio-scrim: 4 6 15;
+  --refugio-accent: 212 175 55;
+  --refugio-text: 243 229 171;
+  --refugio-card-from: 18 19 42;
+  --refugio-card-to: 10 11 20;
+  --refugio-card-capture: 0 0 0;
+  --refugio-card-inset: 31 22 52;
+  --refugio-card-inset-line: 166 130 58;
+  --refugio-card-soft: 2 6 23;
+  --refugio-card-line: 184 150 46;
+}
+
+html[data-sanctuary="nature"] {
+  --refugio-base: 1 6 3;
+  --refugio-surface: 8 18 8;
+  --refugio-surface-2: 11 22 12;
+  --refugio-surface-card: 10 20 12;
+  --refugio-scrim: 4 6 15;
+  --refugio-accent: 52 211 153;
+  --refugio-text: 215 245 228;
+  --refugio-card-from: 13 26 15;
+  --refugio-card-to: 10 18 8;
+  --refugio-card-capture: 13 26 15;
+  --refugio-card-inset: 15 34 18;
+  --refugio-card-inset-line: 74 222 128;
+  --refugio-card-soft: 15 31 18;
+  --refugio-card-line: 16 185 129;
+}
+
+/* Curvas de easing compartidas (drawers/modales). Evita repetir cubic-bezier
+   sueltos por los componentes. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Fondo base por tema: evita el parpadeo azul (degradado celestial) al
+   navegar en modo santuario antes de que el canvas hidrate. */
+html[data-sanctuary="nature"] body {
+  background: radial-gradient(ellipse 120% 80% at 50% 0%, #06200f 0%, #031208 45%, #010603 100%);
+}
+
+/* Sticky footer en dispositivos táctiles (móvil y tablet, cualquier
+   orientación): cuando el contenido es corto, el footer queda al fondo del
+   viewport sin forzar scroll. En PC (puntero fino) no se aplica. */
+@media (hover: none) and (pointer: coarse) {
+  .refugio-touch-footer-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+  .refugio-touch-footer-main {
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+}
+
+/* Bottom sheet / modal de acciones del versículo (React).
+   Móvil: sube desde abajo. md+: modal centrado con fade + scale. */
+.refugio-bsheet {
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out);
+}
+.refugio-bsheet[data-state="open"] {
+  opacity: 1;
+}
+.refugio-bsheet-panel {
+  transform: translateY(100%);
+  transition: transform 340ms var(--ease-drawer);
+}
+.refugio-bsheet[data-state="open"] .refugio-bsheet-panel {
+  transform: translateY(0);
+}
+@media (min-width: 768px) {
+  .refugio-bsheet-panel {
+    transform: translateY(0) scale(0.96);
+    opacity: 0;
+    transition:
+      opacity 250ms var(--ease-out),
+      transform 250ms var(--ease-out);
+  }
+  .refugio-bsheet[data-state="open"] .refugio-bsheet-panel {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refugio-bsheet {
+    transition: opacity 180ms ease;
+  }
+  .refugio-bsheet-panel,
+  .refugio-bsheet[data-state="open"] .refugio-bsheet-panel {
+    transform: none;
+    opacity: 1;
+    transition: opacity 180ms ease;
+  }
+}
+
+/* Drawer lateral derecho (meditar/orar/reflexionar). */
+.refugio-ddrawer {
+  opacity: 0;
+  transition: opacity 260ms var(--ease-out);
+}
+.refugio-ddrawer[data-state="open"] {
+  opacity: 1;
+}
+.refugio-ddrawer-panel {
+  transform: translateX(100%);
+  transition: transform 340ms var(--ease-drawer);
+}
+.refugio-ddrawer[data-state="open"] .refugio-ddrawer-panel {
+  transform: translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .refugio-ddrawer {
+    transition: opacity 180ms ease;
+  }
+  .refugio-ddrawer-panel,
+  .refugio-ddrawer[data-state="open"] .refugio-ddrawer-panel {
+    transform: none;
+    transition: opacity 180ms ease;
   }
 }
 
@@ -30,20 +163,25 @@
   }
 
   .refugio-thin-scroll {
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: rgba(212, 175, 55, 0.35) transparent;
-    -webkit-overflow-scrolling: touch;
   }
-  .refugio-thin-scroll::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  .refugio-thin-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .refugio-thin-scroll::-webkit-scrollbar-thumb {
-    border-radius: 9999px;
-    background: rgba(212, 175, 55, 0.35);
+  /* En puntero fino (PC) ajustamos además el scrollbar WebKit para la barra
+     dorada fina. En táctil se usa el scroll nativo superpuesto (teñido por
+     scrollbar-color): thumb corto que aparece al deslizar y se auto-oculta. */
+  @media (hover: hover) and (pointer: fine) {
+    .refugio-thin-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .refugio-thin-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .refugio-thin-scroll::-webkit-scrollbar-thumb {
+      border-radius: 9999px;
+      background: rgba(212, 175, 55, 0.35);
+    }
   }
 
   /* Barras sticky del lector: cristal en reposo, fondo sólido al fijarse
@@ -66,5 +204,95 @@
   body.refugio-immersive [data-site-footer],
   body.refugio-immersive [data-sanctuary-switcher] {
     display: none !important;
+  }
+}
+
+/* Lupa de la cabecera de libros/capítulos: abre el overlay de búsqueda. */
+.refugio-books-lupa {
+  display: inline-flex;
+}
+
+/* Enfoque del lector (solo dispositivos táctiles: móvil/tablet). Convierte las
+   etapas "libros" y "capítulos" en una pantalla con cabecera fija y contenido
+   con scroll interno, y oculta el chrome del sitio (header, footer, switcher,
+   título, breadcrumb y racha). En PC no aplica. */
+@media (hover: none) and (pointer: coarse) {
+  body.refugio-reader-focus {
+    overflow: hidden;
+  }
+  body.refugio-reader-focus [data-site-header],
+  body.refugio-reader-focus [data-site-footer],
+  body.refugio-reader-focus [data-sanctuary-switcher],
+  body.refugio-reader-focus [data-reader-title],
+  body.refugio-reader-focus [data-reader-chrome] {
+    display: none !important;
+  }
+  body.refugio-reader-focus [data-reader-books-panel],
+  body.refugio-reader-focus [data-reader-chapters-panel] {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: rgb(var(--refugio-base));
+    color: rgb(var(--refugio-text));
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem
+      calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+  body.refugio-reader-focus [data-reader-books-header],
+  body.refugio-reader-focus [data-reader-chapters-header] {
+    position: static;
+    flex: 0 0 auto;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  body.refugio-reader-focus [data-reader-books-body],
+  body.refugio-reader-focus [data-reader-chapters-body] {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* Overlay de búsqueda del lector. Móvil: pantalla completa que sube desde
+   abajo. md+: modal centrado con fade + scale. Solo transform y opacity. */
+.refugio-search {
+  opacity: 0;
+  transition: opacity 260ms var(--ease-out);
+}
+.refugio-search[data-state="open"] {
+  opacity: 1;
+}
+.refugio-search-panel {
+  transform: translateY(100%);
+  transition: transform 340ms var(--ease-drawer);
+}
+.refugio-search[data-state="open"] .refugio-search-panel {
+  transform: translateY(0);
+}
+@media (min-width: 768px) {
+  .refugio-search-panel {
+    transform: translateY(0) scale(0.96);
+    opacity: 0;
+    transition:
+      opacity 250ms var(--ease-out),
+      transform 250ms var(--ease-out);
+  }
+  .refugio-search[data-state="open"] .refugio-search-panel {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refugio-search {
+    transition: opacity 180ms ease;
+  }
+  .refugio-search-panel,
+  .refugio-search[data-state="open"] .refugio-search-panel {
+    transform: none;
+    opacity: 1;
+    transition: opacity 180ms ease;
   }
 }

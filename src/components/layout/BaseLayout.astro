@@ -1,5 +1,8 @@
 ---
 import "@/styles/global.css";
+import "@fortawesome/fontawesome-free/css/fontawesome.min.css";
+import "@fortawesome/fontawesome-free/css/solid.min.css";
+import "@fortawesome/fontawesome-free/css/regular.min.css";
 import ToastHost from "@/components/ui/ToastHost.astro";
 
 interface Props {
@@ -16,12 +19,12 @@ const { title, description = "Meditación bíblica con versículo del día y des
 const shareTitle = ogTitle ?? title;
 const shareDescription = ogDescription ?? description;
 
-const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://bible-api.com; frame-ancestors 'none'; form-action 'self'";
+const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://bible-api.com; frame-ancestors 'none'; form-action 'self'";
 Astro.response.headers.set("content-security-policy", CSP);
 ---
 
 <!doctype html>
-<html lang={lang} class="scroll-smooth" data-url-lang="es" data-url-mood="all">
+<html lang={lang} class="scroll-smooth" data-url-lang={lang} data-url-mood="all">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -41,19 +44,36 @@ Astro.response.headers.set("content-security-policy", CSP);
     <meta name="twitter:description" content={shareDescription} />
     <meta name="twitter:image" content={ogImage} />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/png" href="/img/logo-refugio-celestial-best.png" />
-    <link rel="apple-touch-icon" href="/img/logo-refugio-celestial-best.png" />
+    <link rel="icon" type="image/png" href="/img/icon-192.png" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon-180.png" />
     <link rel="stylesheet" href="/fonts/fonts.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
-    />
     <title>{title}</title>
+    <script is:inline>
+      (function () {
+        try {
+          var KEY = "refugio-celestial:sanctuary-theme";
+          var meta = document.querySelector('meta[name="theme-color"]');
+          var apply = function (theme) {
+            var t = theme === "nature" ? "nature" : "celestial";
+            document.documentElement.setAttribute("data-sanctuary", t);
+            if (meta) meta.setAttribute("content", t === "nature" ? "#081208" : "#0b0f24");
+          };
+          apply(localStorage.getItem(KEY));
+          window.addEventListener("refugio-sanctuary-changed", function (e) {
+            apply(e && e.detail && e.detail.theme);
+          });
+        } catch (err) {}
+      })();
+    </script>
   </head>
   <body>
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:border focus:border-gold-500/50 focus:bg-night focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gold-100 focus:shadow-lg"
+    >
+      <span class="i18n-es">Saltar al contenido</span>
+      <span class="i18n-en hidden" aria-hidden="true">Skip to content</span>
+    </a>
     <slot />
     <ToastHost />
   </body>

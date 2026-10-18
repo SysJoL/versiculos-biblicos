@@ -44,7 +44,6 @@ const mobileFilterLabel = currentLang === "es" ? "Filtrar categorías" : "Filter
       aria-haspopup="dialog"
       aria-expanded="false"
       title={mobileFilterLabel}
-      onclick="(function(){var s=document.getElementById('refugio-mood-sheet');var b=document.getElementById('refugio-mood-open');if(s){s.classList.remove('hidden');s.setAttribute('aria-hidden','false');}if(b){b.setAttribute('aria-expanded','true');}})()"
     >
       <i class="fa-solid fa-filter text-sm text-gold-300/95" aria-hidden="true" />
       <span class="sr-only">{mobileFilterLabel}</span>
@@ -131,7 +130,7 @@ const mobileFilterLabel = currentLang === "es" ? "Filtrar categorías" : "Filter
     }
   }
   .refugio-mood-select option {
-    background: #0f172a;
+    background: rgb(var(--refugio-surface-2));
     color: #f3e5ab;
   }
   .mood-sheet-body {
@@ -179,28 +178,22 @@ const mobileFilterLabel = currentLang === "es" ? "Filtrar categorías" : "Filter
       document.body.appendChild(sheet);
     }
 
-    const isHidden = () => sheet.classList.contains("hidden");
+    const isHidden = () => sheet.dataset.state !== "open";
     const openSheet = () => {
-      sheet.classList.remove("hidden");
-      sheet.classList.add("flex");
-      panel.classList.remove("translate-y-full");
-      panel.classList.add("translate-y-0");
-      sheet.setAttribute("aria-hidden", "false");
+      window.__refugioSheet?.open(sheet);
       openBtn.setAttribute("aria-expanded", "true");
       previousBodyOverflow = document.body.style.overflow;
       previousBodyTouchAction = document.body.style.touchAction;
       document.body.style.overflow = "hidden";
       document.body.style.touchAction = "none";
+      requestAnimationFrame(() => window.__refugioDialog?.open(panel));
     };
     const closeSheet = () => {
-      panel.classList.remove("translate-y-0");
-      panel.classList.add("translate-y-full");
-      sheet.classList.remove("flex");
-      sheet.classList.add("hidden");
-      sheet.setAttribute("aria-hidden", "true");
+      window.__refugioSheet?.close(sheet);
       openBtn.setAttribute("aria-expanded", "false");
       document.body.style.overflow = previousBodyOverflow;
       document.body.style.touchAction = previousBodyTouchAction;
+      window.__refugioDialog?.close();
     };
 
     openBtn.addEventListener("click", openSheet);

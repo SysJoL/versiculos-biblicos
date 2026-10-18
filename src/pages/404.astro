@@ -2,18 +2,20 @@
 import BaseLayout from "@/components/layout/BaseLayout.astro";
 import CosmicBackground from "@/components/celestial/CosmicBackground";
 import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
+import { parseLang } from "@/lib/i18n/lang";
 
 Astro.response.status = 404;
+const currentLang = parseLang(Astro.url.searchParams.get("lang"));
 ---
 
 <BaseLayout
   title="404 — Versículos Bíblicos"
   description="La página solicitada no fue encontrada."
-  lang="es"
+  lang={currentLang}
 >
   <CosmicBackground client:idle />
-  <main class="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl items-center justify-center px-3 py-10 sm:px-4">
-    <section class="w-full max-w-xl rounded-2xl border border-gold-500/25 bg-[#0e132d]/70 p-6 text-center shadow-[0_0_22px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-8">
+  <main id="main-content" tabindex="-1" class="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl items-center justify-center px-3 py-10 sm:px-4">
+    <section class="w-full max-w-xl rounded-2xl border border-gold-500/25 bg-[rgb(var(--refugio-surface-card)/0.7)] p-6 text-center shadow-[0_0_22px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:p-8">
       <img
         src="/img/logo-refugio-celestial-best.png"
         alt="Versículos Bíblicos"

@@ -132,19 +132,17 @@ export function VerseCardView({
   const isLongVerse = verse.text.length > 170 || /\n/.test(verse.text);
 
   // ── Theme-dependent styles ──────────────────────────────────────────────
-  const isNature = sanctuary === "nature";
-  const articleMdBg = isNature
-    ? "md:from-[#0d1a0f]/95 md:to-[#0a1208]/60"
-    : "md:from-[#12132a]/95 md:to-night/50";
-  const articleMdBorder = isNature ? "md:border-emerald-500/10" : "md:border-gold-500/10";
-  const captureMdBg = isNature ? "md:bg-[#0d1a0f]/25" : "md:bg-black/20";
-  const captureMdBorder = isNature ? "md:border-emerald-500/5" : "md:border-gold-500/5";
-  const captureMobileBg = isNature
-    ? "max-md:bg-[#0f2212]/50 max-md:border-emerald-400/20 max-md:shadow-[0_0_10px_rgba(52,211,153,0.08)]"
-    : "max-md:bg-[#1f1634]/40 max-md:border-gold-500/20 max-md:shadow-[0_0_10px_rgba(212,175,55,0.1)]";
-  const articleMobileBg = isNature
-    ? "max-md:border-[#4ade80]/25 max-md:bg-[#0f1f12]/20"
-    : "max-md:border-[#a6823a]/40 max-md:bg-slate-950/15";
+  // Resueltos vía variables CSS: el HTML del SSR ya sale con el tema activo,
+  // así el card no cambia de color al hidratar (sin parpadeo azul).
+  const articleMdBg =
+    "md:from-[rgb(var(--refugio-card-from)/0.95)] md:to-[rgb(var(--refugio-card-to)/0.5)]";
+  const articleMdBorder = "md:border-[rgb(var(--refugio-card-line)/0.1)]";
+  const captureMdBg = "md:bg-[rgb(var(--refugio-card-capture)/0.2)]";
+  const captureMdBorder = "md:border-[rgb(var(--refugio-card-line)/0.05)]";
+  const captureMobileBg =
+    "max-md:bg-[rgb(var(--refugio-card-inset)/0.4)] max-md:border-[rgb(var(--refugio-card-inset-line)/0.2)] max-md:shadow-[0_0_10px_rgb(var(--refugio-card-line)/0.08)]";
+  const articleMobileBg =
+    "max-md:border-[rgb(var(--refugio-card-inset-line)/0.4)] max-md:bg-[rgb(var(--refugio-card-soft)/0.15)]";
   const doveSizeClass = isLongVerse
     ? "h-[5.5rem] w-[5.5rem] md:h-32 md:w-32"
     : "h-[5.5rem] w-[5.5rem] md:h-24 md:w-24";
@@ -358,7 +356,7 @@ export function VerseCardView({
             {devotionCopy.reflect.label}
           </button>
         </div>
-        <p className="relative z-10 mt-2 text-right font-sans text-[11px] text-gold-400/55 sm:text-xs">
+        <p className="relative z-10 mt-2 text-right font-sans text-[11px] text-gold-400/85 sm:text-xs">
           {sourceLine}
         </p>
       </div>
@@ -396,7 +394,7 @@ export function VerseCardView({
         </button>
       </div>
 
-      <p className="mt-3 text-center font-sans text-xs text-gold-300/50 sm:mt-4">
+      <p className="mt-3 text-center font-sans text-xs text-gold-300/75 sm:mt-4">
         <i className="fa-solid fa-clock-rotate-left me-1" aria-hidden />
         <span suppressHydrationWarning>{L.counter(n)}</span>
       </p>

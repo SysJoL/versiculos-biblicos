@@ -65,14 +65,14 @@ const subtitle = currentLang === "es" ? "Elige tu maná" : "Choose your manna";
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-[13.5px] font-semibold leading-tight">{L[m.id]}</span>
-                <span class="block truncate text-[11px] leading-tight text-gold-200/55">
+                <span class="block truncate text-[11px] leading-tight text-gold-200/70">
                   {currentLang === "es" ? m.descEs : m.descEn}
                 </span>
               </span>
               {isActive ? (
                 <i class="fa-solid fa-circle-check shrink-0 text-sm text-gold-300" aria-hidden="true" />
               ) : (
-                <i class="fa-solid fa-chevron-right shrink-0 text-[0.65rem] text-gold-300/30 transition group-hover:translate-x-0.5 group-hover:text-gold-300/70" aria-hidden="true" />
+                <i class="fa-solid fa-chevron-right shrink-0 text-[0.65rem] text-gold-300/50 transition group-hover:translate-x-0.5 group-hover:text-gold-300/70" aria-hidden="true" />
               )}
               {isActive && <span class="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-gold-200 via-gold-400 to-gold-500" aria-hidden="true" />}
             </button>
@@ -82,7 +82,7 @@ const subtitle = currentLang === "es" ? "Elige tu maná" : "Choose your manna";
     </form>
 
     <div class="border-t border-gold-500/10 px-4 py-2.5">
-      <p class="text-[11px] leading-snug text-gold-200/45">
+      <p class="text-[11px] leading-snug text-gold-200/70">
         {currentLang === "es" ? "Fijo mientras meditas · cambia sin recargar tu paz" : "Pinned while you meditate · switch in peace"}
       </p>
     </div>

@@ -12,10 +12,8 @@ import {
   type CatalogBook,
   type RefSuggestion,
 } from "@/lib/data/booksCatalog";
-import {
-  getStoredSanctuary,
-  type SanctuaryTheme,
-} from "@/lib/ui/sanctuary";
+import { getStoredSanctuary, type SanctuaryTheme } from "@/lib/ui/sanctuary";
+import { useFocusTrap } from "@/lib/ui/useFocusTrap";
 import { showToast } from "@/lib/ui/toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -135,11 +133,16 @@ export function BibleReader({
   const [focused, setFocused] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  // Overlay de búsqueda: se mantiene montado durante la animación de salida.
+  const [searchMounted, setSearchMounted] = useState(false);
+  const [searchState, setSearchState] = useState<"closed" | "open">("closed");
   // Lectura inmersiva: el pasaje llena la pantalla.
   const [immersive, setImmersive] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const overlayInputRef = useRef<HTMLInputElement | null>(null);
+  // Overlay de búsqueda: confina el foco en la caja; el input ya se enfoca solo.
+  useFocusTrap(overlayOpen, searchBoxRef, { moveFocus: false });
   const [data, setData] = useState<PassageData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -221,6 +224,41 @@ export function BibleReader({
     : "top-[calc(4.5rem+env(safe-area-inset-top,0px))] md:top-[calc(5rem+env(safe-area-inset-top,0px))]";
   const stage = !book ? (testament ? "books" : "testaments") : !chapter ? "chapters" : "text";
 
+  // Ayuda dinámica de "sin resultados": los ejemplos se adaptan al contexto.
+  // Con testamento → libros de ese testamento; con libro → capítulos de ese
+  // libro; con capítulo → versículos de ese capítulo. Sin alcance, un libro
+  // de cada testamento.
+  const tryExamples = useMemo<string[]>(() => {
+    const name = (b: CatalogBook) => bookLabel(b, lang);
+    if (book && chapter) {
+      const total = data?.verses.length ?? 0;
+      const picks = Array.from(
+        new Set([1, Math.ceil(total / 2), total].filter((n) => n > 0))
+      );
+      return picks.length
+        ? picks.map((n) => `${name(book)} ${chapter}:${n}`)
+        : [`${name(book)} ${chapter}`];
+    }
+    if (book) {
+      const picks = Array.from(
+        new Set([1, Math.ceil(book.chapters / 2), book.chapters].filter((n) => n > 0))
+      );
+      return picks.map((n) => `${name(book)} ${n}`);
+    }
+    if (testament) {
+      const books = testament === "NT" ? NEW_TESTAMENT : OLD_TESTAMENT;
+      return books.slice(0, 3).map(name);
+    }
+    return [OLD_TESTAMENT[0], NEW_TESTAMENT[0]]
+      .filter((b): b is CatalogBook => Boolean(b))
+      .map(name);
+  }, [book, chapter, data, lang, testament]);
+
+  const tryHint =
+    tryExamples.length > 0
+      ? `${L.tryPrefix} ${tryExamples.join(" · ")}`
+      : undefined;
+
   useEffect(() => {
     setSanctuary(getStoredSanctuary());
     const handler = (e: Event) => {
@@ -231,12 +269,16 @@ export function BibleReader({
     return () => window.removeEventListener("refugio-sanctuary-changed", handler);
   }, []);
 
-  // Alcance jerárquico: dentro de un testamento solo se sugiere su contenido.
+  // Alcance jerárquico de la búsqueda: sin libro → toda la Biblia o el
+  // testamento activo; con un libro seleccionado (capítulos o versículos) →
+  // solo ese libro.
+  const searchBook = book;
   const suggestions = useMemo(() => {
-    const all = getRefSuggestions(search, lang, 7);
-    if (!testament) return all;
-    return all.filter((s) => s.book.testament === testament);
-  }, [search, lang, testament]);
+    let list = getRefSuggestions(search, lang, 7);
+    if (testament) list = list.filter((s) => s.book.testament === testament);
+    if (searchBook) list = list.filter((s) => s.book.usfm === searchBook.usfm);
+    return list;
+  }, [search, lang, testament, searchBook]);
   const parsedPreview = useMemo(() => parseRef(search), [search]);
   const trimmedSearch = search.trim();
   // Modo texto: no es referencia válida ni hay sugerencia de libro, y hay
@@ -269,15 +311,16 @@ export function BibleReader({
         .then((r) => r.json())
         .then((json: { results?: TextHit[] }) => {
           const list = Array.isArray(json?.results) ? json.results.slice(0, 8) : [];
-          // Alcance jerárquico: dentro de un testamento solo sus versículos.
+          // Alcance jerárquico: testamento y, en versículos, solo el libro activo.
           setTextResults(
-            !testament
-              ? list
-              : list.filter((hit) => {
-                  const parsed = parseRef(hit.ref);
-                  const found = parsed ? findCatalogBook(parsed.bookCode) : undefined;
-                  return found?.testament === testament;
-                })
+            list.filter((hit) => {
+              const parsed = parseRef(hit.ref);
+              const found = parsed ? findCatalogBook(parsed.bookCode) : undefined;
+              if (!found) return false;
+              if (searchBook && found.usfm !== searchBook.usfm) return false;
+              if (testament && found.testament !== testament) return false;
+              return true;
+            })
           );
         })
         .catch((err) => {
@@ -289,7 +332,7 @@ export function BibleReader({
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [textMode, trimmedSearch, lang, testament]);
+  }, [textMode, trimmedSearch, lang, testament, searchBook]);
 
   const totalOptions =
     suggestions.length + (textMode ? textResults.length : 0);
@@ -322,10 +365,57 @@ export function BibleReader({
     };
   }, [immersive]);
 
-  // Overlay full-screen: autofocus, scroll-lock y cierre con Escape.
+  // Enfoque de libros/capítulos (solo en táctil, vía CSS): marca el body
+  // durante esas etapas para ocultar el chrome del sitio y mostrar el panel
+  // con scroll interno. En PC la clase no tiene efecto (reglas bajo media query).
+  useEffect(() => {
+    if (stage !== "books" && stage !== "chapters") return;
+    document.body.classList.add("refugio-reader-focus");
+    return () => document.body.classList.remove("refugio-reader-focus");
+  }, [stage]);
+
+  // En táctil, entrar a la etapa de versículos abre directo en pantalla completa
+  // (modo inmersivo); en PC se mantiene la tarjeta en flujo con el botón de
+  // expandir. Al salir de versículos se cierra el inmersivo.
+  useEffect(() => {
+    if (typeof window === "undefined" || stage !== "text") {
+      setImmersive(false);
+      return;
+    }
+    const coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (coarse) setImmersive(true);
+  }, [stage]);
+
+  // Overlay de búsqueda: montaje/desmontaje animado (entrada y salida).
+  useEffect(() => {
+    if (overlayOpen) {
+      setSearchMounted(true);
+      // Doble rAF: pinta el panel cerrado antes de abrirlo para que anime.
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setSearchState("open"));
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+      };
+    }
+    setSearchState("closed");
+    const timer = window.setTimeout(() => setSearchMounted(false), 380);
+    return () => window.clearTimeout(timer);
+  }, [overlayOpen]);
+
+  // Overlay: autofocus (una vez montado), scroll-lock y cierre con Escape.
+  useEffect(() => {
+    if (!overlayOpen || !searchMounted) return;
+    const raf = requestAnimationFrame(() =>
+      overlayInputRef.current?.focus({ preventScroll: true })
+    );
+    return () => cancelAnimationFrame(raf);
+  }, [overlayOpen, searchMounted]);
+
   useEffect(() => {
     if (!overlayOpen) return;
-    overlayInputRef.current?.focus({ preventScroll: true });
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
@@ -701,27 +791,13 @@ export function BibleReader({
     []
   );
 
-  const searchTrigger = (
-    <div className="mb-4">
-      <button
-        type="button"
-        onClick={() => setOverlayOpen(true)}
-        aria-label={L.search}
-        className="focus-ring flex w-full items-center gap-2.5 rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-sm backdrop-blur-sm transition hover:border-gold-500/40"
-      >
-        <i className="fa-solid fa-magnifying-glass shrink-0 text-gold-300/80" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-left text-gold-200/40">
-          {L.searchPlaceholder}
-        </span>
-      </button>
-    </div>
-  );
-
   const searchOverlay =
-    overlayOpen && typeof document !== "undefined" ? (
+    searchMounted && typeof document !== "undefined" ? (
       createPortal(
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto bg-[#04060f]/95 backdrop-blur-md"
+          data-refugio-search
+          data-state={searchState}
+          className="refugio-search fixed inset-0 z-[100] flex bg-[rgb(var(--refugio-scrim)/0.95)] backdrop-blur-md max-md:items-stretch max-md:justify-center md:items-center md:justify-center md:p-4"
         onClick={() => setOverlayOpen(false)}
         role="dialog"
         aria-modal="true"
@@ -730,9 +806,9 @@ export function BibleReader({
         <div
           ref={searchBoxRef}
           onClick={(e) => e.stopPropagation()}
-          className="mx-auto mt-[6dvh] w-[min(92vw,36rem)] rounded-2xl border border-white/15 bg-[#0d0f24]/95 p-3 shadow-2xl sm:p-4"
+          className="refugio-search-panel flex flex-col bg-[rgb(var(--refugio-surface)/0.98)] text-gold-100 shadow-2xl max-md:h-full max-md:w-full md:max-h-[80vh] md:w-[min(92vw,36rem)] md:rounded-2xl md:border md:border-white/15"
         >
-          <div className="sticky top-0 z-10 -mx-3 -mt-3 rounded-t-2xl bg-[#0d0f24]/95 px-3 pb-2 pt-3 backdrop-blur-md sm:-mx-4 sm:-mt-4 sm:px-4 sm:pt-4">
+          <div className="shrink-0 border-b border-white/10 px-3 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:px-4 md:pt-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-gold-300/80">
               {L.search}
@@ -769,7 +845,7 @@ export function BibleReader({
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm text-gold-50 transition placeholder:text-gold-200/40 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm text-gold-50 transition placeholder:text-gold-200/70 focus:outline-none"
               />
               {search && (
                 <button
@@ -798,12 +874,13 @@ export function BibleReader({
             </div>
           </form>
           </div>
+          <div className="refugio-thin-scroll flex-1 overflow-y-auto px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 sm:px-4 md:pb-3">
           {trimmedSearch.length > 0 ? (
               <ul
                 id="reader-search-listbox"
                 role="listbox"
                 aria-label={L.suggestionsLabel}
-                className="mt-2 max-h-[52dvh] overflow-y-auto rounded-xl border border-white/10 bg-white/[0.02] p-1.5"
+                className="rounded-xl border border-white/10 bg-white/[0.02] p-1.5"
               >
                 {suggestions.map((s, i) => (
                   <li key={s.key} role="option" aria-selected={i === activeIdx}>
@@ -832,14 +909,14 @@ export function BibleReader({
                 ))}
                 {suggestions.length === 0 && !textMode && (
                   <li>
-                    <EmptyState title={L.noResults} />
+                    <EmptyState title={L.noResults} hint={tryHint} />
                   </li>
                 )}
                 {textMode && (
                   <>
                     <li
                       aria-hidden
-                      className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50"
+                      className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70"
                     >
                       {L.relatedVerses}
                     </li>
@@ -886,7 +963,7 @@ export function BibleReader({
                     })}
                     {!textLoading && textResults.length === 0 && (
                       <li>
-                        <EmptyState title={L.noResultsText} />
+                        <EmptyState title={L.noResults} hint={tryHint} />
                       </li>
                     )}
                   </>
@@ -896,7 +973,7 @@ export function BibleReader({
             <div className="mt-2 flex flex-col gap-4">
               <section aria-label={L.historyTitle}>
                 <div className="flex items-center justify-between px-1 pb-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70">
                     {L.historyTitle}
                   </p>
                   {visibleHistory.length > 0 ? (
@@ -910,7 +987,7 @@ export function BibleReader({
                   ) : null}
                 </div>
                 {visibleHistory.length > 0 ? (
-                  <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2">
                     {visibleHistory.map((h) => (
                       <button
                         key={h.q}
@@ -933,7 +1010,7 @@ export function BibleReader({
               {!testament ? (
                 <>
                   <section aria-label={L.exploreTitle}>
-                    <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50">
+                    <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70">
                       {L.exploreTitle}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -958,7 +1035,7 @@ export function BibleReader({
                     </div>
                   </section>
                   <section aria-label={L.topBooks}>
-                    <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50">
+                    <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70">
                       {L.topBooks}
                     </p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -982,7 +1059,7 @@ export function BibleReader({
                 </>
               ) : !book ? (
                 <section aria-label={testamentLabel}>
-                  <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50">
+                  <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70">
                     {testamentLabel} · {L.booksCount(testamentBooks.length)}
                   </p>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1005,7 +1082,7 @@ export function BibleReader({
                 </section>
               ) : !chapter || !data?.verses?.length ? (
                 <section aria-label={L.chooseChapter}>
-                  <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50">
+                  <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70">
                     {bookLabel(book, lang)} · {L.chooseChapter}
                   </p>
                   <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
@@ -1026,10 +1103,10 @@ export function BibleReader({
                 </section>
               ) : (
                 <section aria-label={L.versesTitle}>
-                  <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/50">
+                  <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gold-200/70">
                     {bookLabel(book, lang)} {chapter} · {L.versesTitle}
                   </p>
-                  <div className="flex max-h-[44dvh] flex-col gap-1 overflow-y-auto">
+                  <div className="flex flex-col gap-1">
                     {data.verses.map((v) => (
                       <button
                         key={v.n}
@@ -1054,6 +1131,7 @@ export function BibleReader({
             </div>
           )}
           </div>
+          </div>
         </div>,
         document.body
       )
@@ -1064,7 +1142,7 @@ export function BibleReader({
   return (
     <section className="w-full max-w-3xl">
       <ErrorBoundary lang={lang} code="500">
-      <div className="mb-4">
+      <div data-reader-title className="mb-4">
         <h1 className={`font-display text-xl font-bold sm:text-2xl ${accentText}`}>
           {L.title}
         </h1>
@@ -1072,51 +1150,122 @@ export function BibleReader({
       </div>
 
       {stage === "books" ? (
-        <>
-        <div data-reader-sentinel className="h-px" aria-hidden />
-        <div
-          data-reader-sticky
-          style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
-          className={`reader-sticky sticky ${stickyTop} z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:px-4 ${stickyBg}`}
-        >
-          {searchTrigger}
-          <div className="mb-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTestament(null)}
-              aria-label={L.backToTestaments}
-              title={L.backToTestaments}
-              className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
-            >
-              <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
-            </button>
-            <p className={`min-w-0 flex-1 truncate text-sm font-semibold ${accentText}`}>
-              {testamentLabel}
-            </p>
-            <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/60">
-              {L.booksCount(testamentBooks.length)}
-            </span>
+        <div data-reader-books-panel className="contents">
+          <div data-reader-sentinel className="h-px" aria-hidden />
+          <div
+            data-reader-sticky
+            data-reader-books-header
+            style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
+            className={`reader-sticky sticky ${stickyTop} z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:px-4 ${stickyBg}`}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTestament(null)}
+                aria-label={L.backToTestaments}
+                title={L.backToTestaments}
+                className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
+              </button>
+              <p className={`min-w-0 flex-1 truncate text-sm font-semibold ${accentText}`}>
+                {testamentLabel}
+              </p>
+              <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/60">
+                {L.booksCount(testamentBooks.length)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOverlayOpen(true)}
+                aria-label={L.search}
+                title={L.search}
+                className="refugio-books-lupa focus-ring h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-magnifying-glass text-xs" aria-hidden />
+              </button>
+            </div>
+          </div>
+          <div
+            ref={booksRef}
+            data-reader-books-body
+            className={`refugio-thin-scroll scroll-mt-28 space-y-6 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}
+          >
+            <p className={`text-sm font-semibold ${accentText}`}>{L.chooseBook}</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {testamentBooks.map((b) => (
+                <button
+                  key={b.usfm}
+                  type="button"
+                  onClick={() => selectBook(b)}
+                  className={`${chipBase} flex items-center justify-between gap-1 border-white/10 text-left text-gold-50/90 ${accentHover}`}
+                >
+                  <span className="min-w-0 truncate">{bookLabel(b, lang)}</span>
+                  <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/70">
+                    {b.chapters}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        </>
-      ) : stage === "chapters" ? (
-        <div
-          className={`mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md sm:px-4 ${stickyBg}`}
-        >
-          {searchTrigger}
-          <nav className="flex items-center gap-2 text-xs last:mb-1" aria-label="breadcrumb">
-            <button
-              type="button"
-              onClick={goBack}
-              className={`focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5 font-medium text-gold-200/80 transition hover:bg-white/5 hover:text-gold-100`}
-            >
-              <i className="fa-solid fa-chevron-left text-[10px]" aria-hidden />
-              {L.backToBooks}
-            </button>
-            <span className="min-w-0 truncate text-gold-100/50">
-              {book ? bookLabel(book, lang) : ""}
-            </span>
-          </nav>
+      ) : stage === "chapters" && book ? (
+        <div data-reader-chapters-panel className="contents">
+          <div data-reader-sentinel className="h-px" aria-hidden />
+          <div
+            data-reader-sticky
+            data-reader-chapters-header
+            style={{ "--reader-sticky-solid": isNature ? "#081208" : "#0b0f24" } as React.CSSProperties}
+            className={`reader-sticky sticky ${stickyTop} z-20 mb-4 rounded-2xl border border-white/10 px-3 pt-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition-[top] duration-200 sm:px-4 ${stickyBg}`}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label={L.backToBooks}
+                title={L.backToBooks}
+                className="focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-chevron-left text-xs" aria-hidden />
+              </button>
+              <p className={`min-w-0 flex-1 truncate text-sm font-semibold ${accentText}`}>
+                {bookLabel(book, lang)}
+              </p>
+              <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/60">
+                {book.chapters}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOverlayOpen(true)}
+                aria-label={L.search}
+                title={L.search}
+                className="refugio-books-lupa focus-ring h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-gold-200 transition hover:bg-white/5"
+              >
+                <i className="fa-solid fa-magnifying-glass text-xs" aria-hidden />
+              </button>
+            </div>
+          </div>
+          <div
+            ref={chaptersRef}
+            data-reader-chapters-body
+            className={`refugio-thin-scroll scroll-mt-28 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}
+          >
+            <p className={`mb-2 text-sm font-semibold ${accentText}`}>
+              {L.chooseChapter}
+            </p>
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
+              {Array.from({ length: book.chapters }, (_, i) => i + 1).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => selectChapter(c)}
+                  aria-label={`${L.chapter} ${c}`}
+                  className={`focus-ring h-11 rounded-xl border bg-black/35 text-sm font-semibold text-gold-50/90 backdrop-blur-sm transition ${accentBorder} ${accentHover}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -1144,49 +1293,7 @@ export function BibleReader({
                     {L.booksCount(tc.count)}
                   </span>
                 </span>
-                <i className="fa-solid fa-chevron-right shrink-0 text-xs text-gold-200/50" aria-hidden />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {stage === "books" && (
-        <div ref={booksRef} className={`scroll-mt-28 space-y-6 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
-          <p className={`text-sm font-semibold ${accentText}`}>{L.chooseBook}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {testamentBooks.map((b) => (
-              <button
-                key={b.usfm}
-                type="button"
-                onClick={() => selectBook(b)}
-                className={`${chipBase} flex items-center justify-between gap-1 border-white/10 text-left text-gold-50/90 ${accentHover}`}
-              >
-                <span className="min-w-0 truncate">{bookLabel(b, lang)}</span>
-                <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-gold-200/50">
-                  {b.chapters}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {stage === "chapters" && book && (
-        <div ref={chaptersRef} className={`scroll-mt-28 rounded-2xl border ${accentBorder} bg-black/40 p-3 shadow-lg backdrop-blur-md sm:p-4`}>
-          <p className={`mb-2 text-sm font-semibold ${accentText}`}>
-            {L.chooseChapter}
-          </p>
-          <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
-            {Array.from({ length: book.chapters }, (_, i) => i + 1).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => selectChapter(c)}
-                aria-label={`${L.chapter} ${c}`}
-                className={`focus-ring h-11 rounded-xl border bg-black/35 text-sm font-semibold text-gold-50/90 backdrop-blur-sm transition ${accentBorder} ${accentHover}`}
-              >
-                {c}
+                <i className="fa-solid fa-chevron-right shrink-0 text-xs text-gold-200/70" aria-hidden />
               </button>
             ))}
           </div>
@@ -1198,7 +1305,7 @@ export function BibleReader({
           ref={textRef}
           className={
             immersive
-              ? "fixed inset-0 z-[90] flex flex-col overflow-hidden border-white/10 bg-[#060612] px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:px-6 md:inset-x-0 md:inset-y-[3dvh] md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border md:pb-6"
+              ? "fixed inset-0 z-[90] flex flex-col overflow-hidden border-white/10 bg-[rgb(var(--refugio-base))] px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:px-6 md:inset-x-0 md:inset-y-[3dvh] md:mx-auto md:w-full md:max-w-3xl md:rounded-2xl md:border md:pb-6"
               : `scroll-mt-24 rounded-2xl border ${accentBorder} bg-black/40 p-4 shadow-lg backdrop-blur-md sm:p-6`
           }
         >
@@ -1394,7 +1501,7 @@ export function BibleReader({
                 ))}
               </div>
               {data.translation && (
-                <footer className="mt-4 border-t border-white/10 pt-2 text-right text-xs text-gold-200/50">
+                <footer className="mt-4 border-t border-white/10 pt-2 text-right text-xs text-gold-200/70">
                   {data.translation}
                 </footer>
               )}
@@ -1404,7 +1511,7 @@ export function BibleReader({
           {immersive ? (
             <nav
               aria-label={lang === "es" ? "Capítulos" : "Chapters"}
-              className="fixed inset-x-0 bottom-0 z-[95] border-t border-white/10 bg-[#060612]/95 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-md md:hidden"
+              className="fixed inset-x-0 bottom-0 z-[95] border-t border-white/10 bg-[rgb(var(--refugio-base)/0.95)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-md md:hidden"
             >
               <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-4">
                 <button
@@ -1439,7 +1546,7 @@ export function BibleReader({
       )}
 
       {stage === "text" && (
-        <p className="mt-3 text-center text-xs text-gold-200/50">{L.verseHint}</p>
+        <p className="mt-3 text-center text-xs text-gold-200/70">{L.verseHint}</p>
       )}
 
       {stage === "text" && book && chapter && data && !loading && !error && highlight != null && (
