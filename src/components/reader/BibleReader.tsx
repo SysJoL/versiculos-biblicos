@@ -701,12 +701,10 @@ export function BibleReader({
   const [menuVerse, setMenuVerse] = useState<MenuVerse | null>(null);
   // Con posición → popover (clic derecho en PC); sin posición → sheet (botón ⋮).
   const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
-  const [squareVerse, setSquareVerse] = useState<{ n: number; text: string } | null>(null);
 
   const openVerseMenu = useCallback(
     (clientX: number, clientY: number, verse: { n: number; text: string }) => {
       setHighlight(verse.n);
-      setSquareVerse(verse);
       setMenuVerse({ n: verse.n, text: verse.text });
       setPopoverPos({ x: clientX, y: clientY });
     },
@@ -715,7 +713,6 @@ export function BibleReader({
 
   const openVerseSheet = useCallback((verse: { n: number; text: string }) => {
     setHighlight(verse.n);
-    setSquareVerse(verse);
     setMenuVerse({ n: verse.n, text: verse.text });
     setPopoverPos(null);
   }, []);
@@ -724,6 +721,15 @@ export function BibleReader({
     setMenuVerse(null);
     setPopoverPos(null);
   }, []);
+
+  // El nodo que se captura para exportar la imagen siempre sigue al versículo
+  // resaltado. Antes era un estado aparte que solo se rellenaba al abrir el
+  // menú completo, así que la descarga rápida (barra inferior) no encontraba
+  // el nodo y fallaba con "No se pudo generar la imagen".
+  const squareVerse =
+    highlight != null
+      ? data?.verses.find((v) => v.n === highlight) ?? null
+      : null;
 
   const goBack = () => {
     if (stage === "text") {
