@@ -1,11 +1,17 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SanctuaryTheme } from "@/lib/ui/sanctuary";
+import {
+  VERSE_FONT_MAX,
+  VERSE_SQUARE_SIZE,
+  VERSE_TEXT_WIDTH,
+  fitVerseFontSize,
+} from "@/lib/ui/fitVerseFont";
 
 /** Id del nodo cuadrado que se captura para exportar el versículo como PNG. */
 export const SQUARE_CAPTURE_ID = "refugio-verse-square-capture";
 
 /** Tamaño del lienzo cuadrado (ideal para compartir en redes/estados). */
-export const SQUARE_SIZE = 1080;
+export const SQUARE_SIZE = VERSE_SQUARE_SIZE;
 
 /** PRNG determinista: los destellos no cambian entre renders del mismo versículo. */
 function mulberry32(seed: number): () => number {
@@ -67,7 +73,46 @@ export function VerseSquareImage({
     }));
   }, [seedKey]);
 
-  const fontSize = text.length > 320 ? 42 : text.length > 190 ? 50 : 58;
+  const [fontSize, setFontSize] = useState(VERSE_FONT_MAX);
+  const textRef = useRef<HTMLParagraphElement | null>(null);
+
+  // El tamaño de fuente se calcula midiendo el alto real del texto renderizado
+  // (no por número de caracteres). Se prueban tamaños con búsqueda binaria y se
+  // elige el mayor que cabe en la zona segura; el versículo nunca se recorta.
+  useEffect(() => {
+    const node = textRef.current;
+    if (!node) return;
+    let cancelled = false;
+
+    const measure = (size: number) => {
+      node.style.fontSize = `${size}px`;
+      return node.getBoundingClientRect().height;
+    };
+
+    const apply = () => {
+      if (cancelled) return;
+      const size = fitVerseFontSize(measure);
+      // Deja el nodo en el tamaño elegido aunque el estado no cambie.
+      node.style.fontSize = `${size}px`;
+      setFontSize(size);
+    };
+
+    apply();
+
+    // Si las fuentes terminan de cargarse después del primer render, se vuelve
+    // a medir para no conservar un tamaño calculado con métricas provisionales.
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      document.fonts.ready
+        .then(() => apply())
+        .catch(() => {
+          /* la medición inicial ya dejó un tamaño válido */
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [text]);
 
   const baseBg = isNature ? "#08120a" : "#0b0f24";
   const glowA = isNature
@@ -165,7 +210,7 @@ export function VerseSquareImage({
         <div
           style={{
             position: "relative",
-            width: SQUARE_SIZE - 340,
+            width: VERSE_TEXT_WIDTH,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -186,6 +231,7 @@ export function VerseSquareImage({
             }}
           />
           <p
+            ref={textRef}
             style={{
               margin: 0,
               color: "#fdf6e3",
