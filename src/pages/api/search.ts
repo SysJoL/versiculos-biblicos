@@ -7,6 +7,7 @@ import {
 } from "@/lib/domain/textSearch";
 import versesEs from "@/data/verses-es.json";
 import versesEn from "@/data/verses-en.json";
+import { cleanVerseText } from "@/lib/domain/verseText";
 
 export const prerender = false;
 
@@ -55,14 +56,6 @@ const jsonHeaders = (
   ...extra,
 });
 
-function sanitizeText(value: string): string {
-  return value
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function extractHits(payload: unknown): SearchHit[] {
   const out: SearchHit[] = [];
   const seen = new Set<string>();
@@ -83,7 +76,7 @@ function extractHits(payload: unknown): SearchHit[] {
         : typeof rec.content === "string"
           ? rec.content
           : "";
-    const text = sanitizeText(raw);
+    const text = cleanVerseText(raw);
     if (ref && text) {
       const key = `${ref}::${text}`.toLowerCase();
       if (!seen.has(key)) {

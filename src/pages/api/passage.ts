@@ -10,6 +10,7 @@ import {
   findCatalogBook,
   type CatalogBook,
 } from "@/lib/data/booksCatalog";
+import { cleanVerseText } from "@/lib/domain/verseText";
 
 export const prerender = false;
 
@@ -70,11 +71,7 @@ const jsonHeaders = (
 });
 
 function stripTags(value: string): string {
-  return value
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .trim();
+  return cleanVerseText(value, { preserveNewlines: true });
 }
 
 const SECTION_HEADING_RE =

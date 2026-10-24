@@ -2,6 +2,8 @@
 import type { Lang, Mood } from "@/lib/domain/types";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/server/rateLimiter";
 import { normalizeRef, pickRandom } from "@/lib/domain/verseSelection";
+import { cleanVerseText } from "@/lib/domain/verseText";
+import { fetchPassage } from "@/lib/server/apiBible";
 
 export const prerender = false;
 
@@ -41,72 +43,6 @@ type ApiBibleCandidate = {
   text: string;
 };
 
-function sanitizeText(value: string): string {
-  return value
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-async function fetchPassages(
-  base: string,
-  bibleId: string,
-  key: string,
-  ids: string[],
-  timeoutMs: number
-): Promise<unknown | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const u = `${base}/bibles/${encodeURIComponent(bibleId)}/passages/${ids.map(encodeURIComponent).join(",")}?content-type=text`;
-    const res = await fetch(u, {
-      headers: { "api-key": key, accept: "application/json" },
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as unknown;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function extractPassageTexts(payload: unknown): Array<{
-  id: string;
-  text: string;
-}> {
-  const out: Array<{ id: string; text: string }> = [];
-  const seen = new Set<string>();
-  const stack: unknown[] = [payload];
-
-  while (stack.length > 0) {
-    const node = stack.pop();
-    if (!node || typeof node !== "object") continue;
-    if (Array.isArray(node)) {
-      for (const item of node) stack.push(item);
-      continue;
-    }
-    const rec = node as Record<string, unknown>;
-    const id = typeof rec.id === "string" ? rec.id : "";
-    const content =
-      typeof rec.content === "string"
-        ? sanitizeText(rec.content)
-        : typeof rec.text === "string"
-          ? sanitizeText(rec.text)
-          : "";
-    if (id && content && /^[1-9A-Z]/i.test(id) && id.includes(".")) {
-      if (!seen.has(id)) {
-        seen.add(id);
-        out.push({ id, text: content });
-      }
-    }
-    for (const value of Object.values(rec)) stack.push(value);
-  }
-  return out;
-}
-
 function scoreCandidate(
   candidate: ApiBibleCandidate,
   keywords: string[],
@@ -142,7 +78,7 @@ function extractCandidates(payload: unknown): ApiBibleCandidate[] {
         : typeof rec.content === "string"
           ? rec.content
           : "";
-    const text = sanitizeText(textRaw);
+    const text = cleanVerseText(textRaw);
     if (ref && text) out.push({ ref, text });
 
     for (const value of Object.values(rec)) stack.push(value);
@@ -250,6 +186,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
       const id = parseRefToUsfm(ref);
       if (id && !usfmToRef.has(id)) usfmToRef.set(id, ref);
     }
+
     const entries = [...usfmToRef.entries()];
     for (let i = entries.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -259,29 +196,28 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
       [entries[i], entries[j]] = [b, a];
     }
 
-    for (let i = 0; i < entries.length; i += 8) {
-      const chunk = entries.slice(i, i + 8);
-      const payload = await fetchPassages(
-        base,
-        bibleId,
-        key,
-        chunk.map((e) => e[0]),
-        6000,
+    // One request per passage, a small batch at a time: normally the first
+    // batch resolves and the user gets one of the curated hints.
+    const BATCH = 3;
+    for (let i = 0; i < entries.length; i += BATCH) {
+      const batch = entries.slice(i, i + BATCH);
+      const results = await Promise.all(
+        batch.map(async ([id, humanRef]) => {
+          if (avoid.has(normalizeRef(humanRef))) return null;
+          const passage = await fetchPassage(base, bibleId, key, id, 6000);
+          if (!passage) return null;
+          const text = cleanVerseText(passage.content);
+          if (text.length < 15) return null;
+          return { ref: humanRef, text } satisfies ApiBibleCandidate;
+        }),
       );
-      if (!payload) continue;
-      const passages = extractPassageTexts(payload);
+
       const picks = new Map<string, ApiBibleCandidate>();
-      for (const p of passages) {
-        const humanRef = usfmToRef.get(p.id);
-        if (!humanRef) continue;
-        if (avoid.has(normalizeRef(humanRef))) continue;
-        if (p.text.length < 15) continue;
-        const key = normalizeRef(humanRef);
-        if (!picks.has(key)) picks.set(key, { ref: humanRef, text: p.text });
+      for (const item of results) {
+        if (!item) continue;
+        const key = normalizeRef(item.ref);
+        if (!picks.has(key)) picks.set(key, item);
       }
-      // Random among the valid passages of the chunk. The API returns them in
-      // canonical order, so always taking the first one made the result look
-      // deterministic even though the hints were shuffled.
       const chosen = pickRandom([...picks.values()]);
       if (chosen) {
         return new Response(
