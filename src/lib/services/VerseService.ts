@@ -3,7 +3,8 @@ import type {
 } from "../repositories/IBibleRepository";
 import type { LocalJsonBibleRepository } from "../repositories/LocalJsonBibleRepository";
 import { VerseRefCache } from "../cache/VerseRefCache";
-import { sampleCatalogRefs } from "../domain/verseCatalog";
+import { VERSE_CATALOG } from "../domain/verseCatalog";
+import { buildHintRefs, normalizeRef } from "../domain/verseSelection";
 import type { Lang, Mood, Verse } from "../domain/types";
 
 type Source =
@@ -42,6 +43,7 @@ export class VerseService {
 
   async getNextVerse(lang: Lang, mood: Mood): Promise<Verse> {
     const avoid = this.cache.asSet();
+    const avoidNormalized = new Set([...avoid].map(normalizeRef));
 
     if (mood === "all") {
       const sources = shuffleSources(this.remotes, lang);
@@ -52,7 +54,7 @@ export class VerseService {
             mood,
             avoid
           );
-          if (fromRemote && !avoid.has(fromRemote.ref)) {
+          if (fromRemote && !avoidNormalized.has(normalizeRef(fromRemote.ref))) {
             return this.rememberAndReturn(fromRemote);
           }
         } else {
@@ -72,7 +74,16 @@ export class VerseService {
       lang === "en" ? [...capableRemotes].reverse() : capableRemotes;
 
     for (let round = 0; round < 3; round++) {
-      const hints = { refs: sampleCatalogRefs(lang, mood, 6) };
+      // Use the full local category pool plus the curated catalog. The old
+      // 15-ref catalog alone made the remote source repeat the same verses.
+      const hints = {
+        refs: buildHintRefs({
+          localRefs: this.local.getRefsForMood(lang, mood),
+          catalogRefs: VERSE_CATALOG[lang][mood],
+          avoidRefs: avoid,
+          count: 8,
+        }),
+      };
 
       for (const remote of orderedRemotes) {
         try {
@@ -82,7 +93,7 @@ export class VerseService {
             avoid,
             hints
           );
-          if (fromRemote && !avoid.has(fromRemote.ref)) {
+          if (fromRemote && !avoidNormalized.has(normalizeRef(fromRemote.ref))) {
             return this.rememberAndReturn(fromRemote);
           }
         } catch {

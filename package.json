@@ -11,6 +11,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "start": "node ./dist/server/entry.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "gen:en": "node scripts/gen-verses-en.mjs"
   },
   "dependencies": {

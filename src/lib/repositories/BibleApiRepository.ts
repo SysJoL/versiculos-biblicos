@@ -4,6 +4,7 @@ import type {
 } from "./IBibleRepository";
 import type { Lang, Mood, Verse } from "../domain/types";
 import { formatVerseId } from "../domain/types";
+import { normalizeRef } from "../domain/verseSelection";
 
 const DEFAULT_BASE = "https://bible-api.com";
 
@@ -48,12 +49,15 @@ export class BibleApiRepository implements IRemoteBibleSource {
   ): Promise<Verse | null> {
     if (lang !== "en") return null;
 
+    // Compare refs consistently: the cache stores human refs with accents and
+    // capitals ("Psalm 23:1"), so a plain toLowerCase() check never matched.
+    const avoid = new Set([...avoidRefs].map(normalizeRef));
     const refs = (hints?.refs ?? []).filter(
-      (r) => !avoidRefs.has(r.toLowerCase())
+      (r) => !avoid.has(normalizeRef(r))
     );
     for (const ref of refs) {
       const verse = await this.fetchByReference(ref);
-      if (verse && !avoidRefs.has(verse.ref.toLowerCase())) return verse;
+      if (verse && !avoid.has(normalizeRef(verse.ref))) return verse;
     }
 
     if (mood !== "all") return null;

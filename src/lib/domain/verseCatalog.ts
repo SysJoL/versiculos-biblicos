@@ -87,6 +87,20 @@ const ES: CatalogRefs = {
     "Romanos 2:4",
     "2 Corintios 7:10",
     "1 Juan 1:9",
+    "2 Crónicas 7:14",
+    "Salmo 32:1",
+    "Salmo 51:7",
+    "Isaías 43:25",
+    "Isaías 44:22",
+    "Ezequiel 18:21-22",
+    "Mateo 18:21-22",
+    "Lucas 15:20",
+    "Hechos 2:38",
+    "Efesios 1:7",
+    "Colosenses 1:14",
+    "Hebreos 8:12",
+    "1 Juan 2:1-2",
+    "Apocalipsis 3:19",
   ],
 };
 
@@ -175,25 +189,21 @@ const EN: CatalogRefs = {
     "Romans 2:4",
     "2 Corinthians 7:10",
     "1 John 1:9",
+    "2 Chronicles 7:14",
+    "Psalm 32:1",
+    "Psalm 51:7",
+    "Isaiah 43:25",
+    "Isaiah 44:22",
+    "Ezekiel 18:21-22",
+    "Matthew 18:21-22",
+    "Luke 15:20",
+    "Acts 2:38",
+    "Ephesians 1:7",
+    "Colossians 1:14",
+    "Hebrews 8:12",
+    "1 John 2:1-2",
+    "Revelation 3:19",
   ],
 };
 
 export const VERSE_CATALOG: Record<Lang, CatalogRefs> = { es: ES, en: EN };
-
-function shuffle<T>(arr: T[]): T[] {
-  const out = [...arr];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
-export function sampleCatalogRefs(
-  lang: Lang,
-  mood: Exclude<Mood, "all">,
-  count = 6
-): string[] {
-  const pool = VERSE_CATALOG[lang][mood] ?? [];
-  return shuffle(pool).slice(0, count);
-}

@@ -1,6 +1,7 @@
 ﻿import type { APIRoute } from "astro";
 import type { Lang, Mood } from "@/lib/domain/types";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/server/rateLimiter";
+import { normalizeRef, pickRandom } from "@/lib/domain/verseSelection";
 
 export const prerender = false;
 
@@ -213,7 +214,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   const avoid = new Set(
     avoidParam
       .split("||")
-      .map((x) => x.trim().toLowerCase())
+      .map((x) => normalizeRef(x))
       .filter(Boolean),
   );
 
@@ -241,7 +242,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
         .map((x) => x.trim())
         .filter(Boolean),
     ),
-  ).filter((ref) => !avoid.has(ref.toLowerCase()));
+  ).filter((ref) => !avoid.has(normalizeRef(ref)));
 
   if (requestedRefs.length > 0) {
     const usfmToRef = new Map<string, string>();
@@ -269,16 +270,25 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
       );
       if (!payload) continue;
       const passages = extractPassageTexts(payload);
+      const picks = new Map<string, ApiBibleCandidate>();
       for (const p of passages) {
         const humanRef = usfmToRef.get(p.id);
         if (!humanRef) continue;
-        if (avoid.has(humanRef.toLowerCase())) continue;
+        if (avoid.has(normalizeRef(humanRef))) continue;
         if (p.text.length < 15) continue;
+        const key = normalizeRef(humanRef);
+        if (!picks.has(key)) picks.set(key, { ref: humanRef, text: p.text });
+      }
+      // Random among the valid passages of the chunk. The API returns them in
+      // canonical order, so always taking the first one made the result look
+      // deterministic even though the hints were shuffled.
+      const chosen = pickRandom([...picks.values()]);
+      if (chosen) {
         return new Response(
           JSON.stringify({
             verse: {
-              text: p.text,
-              ref: humanRef,
+              text: chosen.text,
+              ref: chosen.ref,
               source: "api-bible",
               language: lang,
               categories: [toCategoryKey(lang, mood)],
@@ -310,11 +320,12 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
 
       const payload = (await res.json()) as unknown;
       const candidates = extractCandidates(payload)
-        .filter((c) => !avoid.has(c.ref.toLowerCase()))
+        .filter((c) => !avoid.has(normalizeRef(c.ref)))
         .map((c) => ({ c, score: scoreCandidate(c, keywords) }))
         .filter((x) => x.score >= 4)
         .sort((a, b) => b.score - a.score);
-      const best = candidates[0]?.c;
+      // Pick among the best matches instead of always the top-scored one.
+      const best = pickRandom(candidates.slice(0, 5))?.c;
       if (!best) continue;
 
       return new Response(
@@ -337,7 +348,7 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
   }
 
   // Backup query with very common terms in case category terms are too strict.
-  const backupQueries = lang === "es" ? ["Dios", "JesÃºs", "SeÃ±or"] : ["God", "Jesus", "Lord"];
+  const backupQueries = lang === "es" ? ["Dios", "Jesús", "Señor"] : ["God", "Jesus", "Lord"];
   for (const query of backupQueries) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -353,9 +364,9 @@ export const GET: APIRoute = async ({ url, clientAddress }) => {
       if (!res.ok) continue;
       const payload = (await res.json()) as unknown;
       const candidates = extractCandidates(payload).filter(
-        (c) => !avoid.has(c.ref.toLowerCase()),
+        (c) => !avoid.has(normalizeRef(c.ref)),
       );
-      const best = candidates[0];
+      const best = pickRandom(candidates.slice(0, 5));
       if (!best) continue;
 
       return new Response(
