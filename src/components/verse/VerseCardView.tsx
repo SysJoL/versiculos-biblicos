@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Lang, Verse } from "@/lib/domain/types";
-import { labelsFor } from "@/lib/i18n/labels";
+import type { Lang, Mood, Verse } from "@/lib/domain/types";
+import { UI, labelsFor } from "@/lib/i18n/labels";
+import { bibleReaderHref } from "@/lib/ui/bibleLink";
+import { MOOD_OPTIONS } from "@/lib/ui/moodOptions";
 import { VerseRefCache } from "@/lib/cache/VerseRefCache";
 import { DevotionDrawer } from "@/components/ui/DevotionDrawer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { MoodChipMenu } from "./MoodChipMenu";
 
 const NT_BOOKS = new Set([
   "mateo",
@@ -86,7 +89,8 @@ function getTestamentLabel(ref: string, lang: Lang): string {
 type Props = {
   verse: Verse;
   lang: Lang;
-  categoryLabel: string;
+  mood: Mood;
+  onMoodChange: (mood: Mood) => void;
   onNewVerse: () => void;
   isLoading: boolean;
   captureId: string;
@@ -106,7 +110,8 @@ type DevotionAction = "meditate" | "pray" | "reflect";
 export function VerseCardView({
   verse,
   lang,
-  categoryLabel,
+  mood,
+  onMoodChange,
   onNewVerse,
   isLoading,
   captureId,
@@ -129,6 +134,9 @@ export function VerseCardView({
     }
   }, []);
   const L = labelsFor(lang);
+  const activeMood =
+    MOOD_OPTIONS.find((o) => o.id === mood) ?? MOOD_OPTIONS[0]!;
+  const activeMoodLabel = UI[lang].mood[mood];
   const isLongVerse = verse.text.length > 170 || /\n/.test(verse.text);
 
   // ── Theme-dependent styles ──────────────────────────────────────────────
@@ -164,6 +172,11 @@ export function VerseCardView({
           ? "World English Bible (WEB)"
           : "Source: Reina-Valera 1960 (RVR60)";
   const testamentLabel = getTestamentLabel(verse.ref, lang);
+  const readerHref = bibleReaderHref(verse.ref, lang);
+  const readerLabel =
+    lang === "es"
+      ? `Leer ${verse.ref} en la Biblia`
+      : `Read ${verse.ref} in the Bible`;
   const devotionCopy = useMemo(() => {
     const shared = {
       meditate:
@@ -258,15 +271,23 @@ export function VerseCardView({
         <div className="flex w-10 shrink-0 items-center justify-start">
           {audioSlot}
         </div>
-        <p className="flex min-w-0 flex-1 justify-center">
-          <span className="inline-flex min-w-0 max-w-full items-center justify-center gap-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-center font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400">
+        <div className="relative flex min-w-0 flex-1 justify-center">
+          <div className="lg:hidden">
+            <MoodChipMenu
+              lang={lang}
+              mood={mood}
+              onChange={onMoodChange}
+              disabled={isLoading}
+            />
+          </div>
+          <span className="hidden min-w-0 max-w-full items-center justify-center gap-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-center font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-400 lg:inline-flex">
             <i
-              className="fa-solid fa-book-bible me-1.5 shrink-0 opacity-80"
+              className={`fa-solid ${activeMood.icon} shrink-0 text-[0.9em] opacity-80`}
               aria-hidden
             />
-            <span className="truncate">{categoryLabel}</span>
+            <span className="truncate">{activeMoodLabel}</span>
           </span>
-        </p>
+        </div>
         <div className="flex w-10 shrink-0 items-center justify-end">
           {actionSlot}
         </div>
@@ -302,12 +323,36 @@ export function VerseCardView({
                 “{verse.text}”
               </p>
               <p className="shrink-0 text-center font-display text-sm leading-normal text-gold-500 sm:text-base md:hidden max-md:mt-0 max-md:text-[#f2cb5d] max-md:[text-shadow:0_0_8px_rgba(212,175,55,0.25)]">
-                {verse.ref} · {testamentLabel}
+                <a
+                  href={readerHref}
+                  aria-label={readerLabel}
+                  className="focus-ring inline-flex items-center gap-1 rounded-md transition hover:text-gold-400"
+                >
+                  <span>
+                    {verse.ref} · {testamentLabel}
+                  </span>
+                  <i
+                    className="fa-solid fa-book-bible text-[0.7em] opacity-70"
+                    aria-hidden
+                  />
+                </a>
               </p>
             </div>
           </div>
           <p className="mt-2 hidden text-center font-display text-sm leading-normal text-gold-500 md:block md:text-sm">
-            {verse.ref} · {testamentLabel}
+            <a
+              href={readerHref}
+              aria-label={readerLabel}
+              className="focus-ring inline-flex items-center gap-1 rounded-md transition hover:text-gold-400"
+            >
+              <span>
+                {verse.ref} · {testamentLabel}
+              </span>
+              <i
+                className="fa-solid fa-book-bible text-[0.7em] opacity-70"
+                aria-hidden
+              />
+            </a>
           </p>
         </div>
         <div className="relative z-10 mt-3 flex w-full items-center justify-center gap-2 text-gold-500/50 sm:mt-4">

@@ -3,9 +3,9 @@ import {
   getClientVerseService,
   getSsgInitialVerse,
 } from "@/lib/providers/verseServiceFactory";
-import { displayCategory } from "@/lib/i18n/categories";
 import { UI } from "@/lib/i18n/labels";
 import { showToast } from "@/lib/ui/toast";
+import { withMoodParam } from "@/lib/ui/moodUrl";
 import {
   getStoredSanctuary,
   type SanctuaryTheme,
@@ -29,6 +29,7 @@ const DAILY_KEY_PREFIX = "refugio.dailyVerseDate";
 
 type Props = {
   initialFromBuild: Verse;
+  initialMood: Mood;
 };
 
 function parseMood(s: string | null): Mood {
@@ -62,11 +63,11 @@ function getTodayKey(): string {
 /**
  * Client island: composes `VerseCard` (view) and `DownloadButton` with services + API.
  */
-export function VerseCard({ initialFromBuild }: Props) {
+export function VerseCard({ initialFromBuild, initialMood }: Props) {
   // Keep initial client render equal to server-rendered HTML to avoid hydration mismatch.
   const [verse, setVerse] = useState<Verse>(initialFromBuild);
   const [lang, setLang] = useState<Lang>(initialFromBuild.language ?? "es");
-  const [mood, setMood] = useState<Mood>("all");
+  const [mood, setMood] = useState<Mood>(initialMood);
   const [loading, setLoading] = useState(false);
   const [urlDone, setUrlDone] = useState(true);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -149,6 +150,28 @@ export function VerseCard({ initialFromBuild }: Props) {
     void refresh(lang, mood);
   }, [lang, mood, refresh, urlDone]);
 
+  // Cambio de categoría desde el chip del card: sin recarga, con spinner y
+  // URL sincronizada para que recargar/compartir conserve el filtro.
+  const onMoodChange = useCallback(
+    (next: Mood) => {
+      if (!urlDone || next === mood) return;
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        setIsAudioPlaying(false);
+      }
+      setMood(next);
+      if (typeof window !== "undefined") {
+        window.history.replaceState(
+          null,
+          "",
+          withMoodParam(window.location.href, lang, next),
+        );
+      }
+      void refresh(lang, next);
+    },
+    [lang, mood, refresh, urlDone],
+  );
+
   const onToggleSpeak = useCallback(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       showToast(
@@ -208,14 +231,14 @@ export function VerseCard({ initialFromBuild }: Props) {
   }, []);
 
   const t = UI[lang];
-  const tag = displayCategory(verse, lang, mood);
 
   return (
     <div className="w-full max-w-2xl px-2 sm:px-0">
       <VerseCardView
         verse={verse}
         lang={lang}
-        categoryLabel={tag}
+        mood={mood}
+        onMoodChange={onMoodChange}
         onNewVerse={onNew}
         isLoading={loading || !urlDone}
         captureId={CAPTURE}

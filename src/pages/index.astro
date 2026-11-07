@@ -8,7 +8,6 @@ import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import NotificationOptIn from "@/components/ui/NotificationOptIn.astro";
 import PwaInstallPrompt from "@/components/ui/PwaInstallPrompt.astro";
 import CategorySidebar from "@/components/selectors/CategorySidebar.astro";
-import CategoryCombobox from "@/components/selectors/CategoryCombobox.astro";
 import { VerseCard } from "@/components/verse/VerseCard";
 import { getSsgInitialVerse } from "@/lib/providers/verseServiceFactory";
 import type { Lang, Mood } from "@/lib/domain/types";
@@ -61,12 +60,9 @@ const pageDescription =
       <div class="flex min-h-0 w-full min-w-0 flex-1 flex-col items-center self-stretch">
         <div class="flex min-h-1 w-full flex-[0.5] items-center justify-center" aria-hidden="true"></div>
         <StreakBadge />
-        <div class="mx-auto mt-2 w-full max-w-[16rem]">
-          <CategoryCombobox currentLang={currentLang} currentMood={currentMood} />
-        </div>
         <div class="flex min-h-1 w-full flex-1 items-center justify-center" aria-hidden="true"></div>
         <div class="w-full max-w-2xl">
-          <VerseCard client:load initialFromBuild={initial} />
+          <VerseCard client:load initialFromBuild={initial} initialMood={currentMood} />
         </div>
         <div class="flex min-h-1 w-full flex-1 items-center justify-center" aria-hidden="true"></div>
       </div>

@@ -7,6 +7,7 @@ import {
   downloadVerseCaptureById,
 } from "./DownloadButton";
 import { showToast } from "@/lib/ui/toast";
+import { bibleReaderHref } from "@/lib/ui/bibleLink";
 import {
   FAVORITES_EVENT,
   favoriteKey,
@@ -116,7 +117,7 @@ export function VerseActionsMenu({
     if (busy) return;
     const verseUrl =
       typeof window !== "undefined"
-        ? `${window.location.origin}/lectura?lang=${lang}&ref=${encodeURIComponent(verseRef)}`
+        ? `${window.location.origin}${bibleReaderHref(verseRef, lang)}`
         : "";
     const added = toggleFavorite({
       key: favKey,
