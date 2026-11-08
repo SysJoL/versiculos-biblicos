@@ -113,6 +113,8 @@ type Args = {
   verseText: string;
   verseUrl: string;
   onClose: () => void;
+  /** Nodo de captura de la imagen; único por panel. */
+  captureId?: string;
 };
 
 /**
@@ -125,6 +127,7 @@ export function useVerseMenuActions({
   verseText,
   verseUrl,
   onClose,
+  captureId = SQUARE_CAPTURE_ID,
 }: Args) {
   const [busy, setBusy] = useState(false);
   const [canCopyImage, setCanCopyImage] = useState(false);
@@ -157,7 +160,7 @@ export function useVerseMenuActions({
     setBusy(true);
     try {
       const ok = await downloadVerseCaptureById(
-        SQUARE_CAPTURE_ID,
+        captureId,
         buildVerseImageFilename(verseRefLabel)
       );
       showToast(ok ? t.imageSaved : t.imageFailed, ok ? "success" : "error", 2200);
@@ -173,7 +176,7 @@ export function useVerseMenuActions({
     if (busy) return;
     setBusy(true);
     try {
-      const blob = await captureVerseBlobById(SQUARE_CAPTURE_ID);
+      const blob = await captureVerseBlobById(captureId);
       if (!blob) {
         showToast(t.imageFailed, "error");
         return;

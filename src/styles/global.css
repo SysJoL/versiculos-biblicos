@@ -63,6 +63,90 @@ html[data-sanctuary="nature"] body {
   background: radial-gradient(ellipse 120% 80% at 50% 0%, #06200f 0%, #031208 45%, #010603 100%);
 }
 
+/* ==========================================================================
+   Layout de /lectura:
+   - Escritorio (min-width: 768px), a cualquier altura: la ventana se reparte en
+     una grilla de 3 filas (header / main / footer) dentro de 100dvh. El main
+     hace scroll interno, por lo que el footer nunca se empuja fuera de pantalla.
+   - Móvil (ancho < 768px): se mantiene el scroll nativo del body, el footer
+     queda al fondo y el header tiene comportamiento flotante/inteligente.
+   ========================================================================== */
+@media (min-width: 768px) {
+  html:has(.refugio-lectura-viewport),
+  body:has(.refugio-lectura-viewport) {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .refugio-lectura-viewport {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+  }
+
+  /* Layout de 3 filas que reparte el 100dvh: header / main / footer.
+     El main absorbe el espacio restante y hace scroll interno, así el footer
+     nunca queda empujado fuera de la pantalla, sin importar la altura. */
+  .refugio-lectura-shell {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .refugio-lectura-header {
+    flex: 0 0 auto !important;
+    z-index: 30;
+  }
+
+  .refugio-lectura-main {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .refugio-lectura-footer {
+    flex: 0 0 auto !important;
+    z-index: 20;
+    margin-top: 0 !important;
+  }
+}
+
+/* En móviles (ancho < 768px) se mantiene el comportamiento actual. */
+@media (max-width: 767px) {
+  .refugio-lectura-viewport {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .refugio-lectura-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    transition: transform 0.3s ease-in-out;
+    will-change: transform;
+  }
+
+  /* Clase aplicada por script cuando el usuario desliza hacia abajo en pantallas compactas */
+  .refugio-lectura-header.header--hidden {
+    transform: translateY(-100%);
+  }
+
+  .refugio-lectura-main {
+    flex: 1 0 auto;
+  }
+
+  .refugio-lectura-footer {
+    margin-top: auto;
+  }
+}
+
 /* Sticky footer en dispositivos táctiles (móvil y tablet, cualquier
    orientación): cuando el contenido es corto, el footer queda al fondo del
    viewport sin forzar scroll. En PC (puntero fino) no se aplica. */
@@ -153,35 +237,21 @@ html[data-sanctuary="nature"] body {
   );
 }
 
-.icon-glow {
-  text-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
-}
-
 @layer utilities {
   .focus-ring {
     @apply focus-visible:ring-2 focus-visible:ring-gold-400/80 focus-visible:outline-none focus:outline-none;
   }
 
+  /* Scroll funcional pero con barra invisible (oculta en WebKit y Firefox) */
   .refugio-thin-scroll {
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(212, 175, 55, 0.35) transparent;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE y Edge */
   }
-  /* En puntero fino (PC) ajustamos además el scrollbar WebKit para la barra
-     dorada fina. En táctil se usa el scroll nativo superpuesto (teñido por
-     scrollbar-color): thumb corto que aparece al deslizar y se auto-oculta. */
-  @media (hover: hover) and (pointer: fine) {
-    .refugio-thin-scroll::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
-    }
-    .refugio-thin-scroll::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .refugio-thin-scroll::-webkit-scrollbar-thumb {
-      border-radius: 9999px;
-      background: rgba(212, 175, 55, 0.35);
-    }
+  .refugio-thin-scroll::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+    width: 0;
+    height: 0;
   }
 
   /* Barras sticky del lector: cristal en reposo, fondo sólido al fijarse
@@ -198,13 +268,23 @@ html[data-sanctuary="nature"] body {
     }
   }
 
-  /* Lectura inmersiva: oculta el header del sitio y el footer de la página
-     mientras el pasaje ocupa la pantalla. */
+  /* Lectura inmersiva: oculta el header del sitio, el header simulado de /lectura,
+     el título de la página y el footer mientras el pasaje ocupa la pantalla. */
   body.refugio-immersive [data-site-header],
   body.refugio-immersive [data-site-footer],
-  body.refugio-immersive [data-sanctuary-switcher] {
+  body.refugio-immersive [data-sanctuary-switcher],
+  body.refugio-immersive .refugio-lectura-header,
+  body.refugio-immersive .refugio-lectura-footer,
+  body.refugio-immersive [data-reader-title] {
     display: none !important;
   }
+}
+
+/* Etapas de navegación del lector (libros/capítulos): el título de la página
+   sobra y resta espacio vertical, así que se oculta en todos los dispositivos.
+   En la etapa de testamentos vuelve a mostrarse. */
+body.refugio-reader-focus [data-reader-title] {
+  display: none !important;
 }
 
 /* Lupa de la cabecera de libros/capítulos: abre el overlay de búsqueda. */
@@ -224,7 +304,9 @@ html[data-sanctuary="nature"] body {
   body.refugio-reader-focus [data-site-footer],
   body.refugio-reader-focus [data-sanctuary-switcher],
   body.refugio-reader-focus [data-reader-title],
-  body.refugio-reader-focus [data-reader-chrome] {
+  body.refugio-reader-focus [data-reader-chrome],
+  body.refugio-reader-focus .refugio-lectura-header,
+  body.refugio-reader-focus .refugio-lectura-footer {
     display: none !important;
   }
   body.refugio-reader-focus [data-reader-books-panel],
@@ -239,12 +321,6 @@ html[data-sanctuary="nature"] body {
     color: rgb(var(--refugio-text));
     padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem
       calc(1rem + env(safe-area-inset-bottom, 0px));
-  }
-  body.refugio-reader-focus [data-reader-books-header],
-  body.refugio-reader-focus [data-reader-chapters-header] {
-    position: static;
-    flex: 0 0 auto;
-    background: rgba(0, 0, 0, 0.4);
   }
   body.refugio-reader-focus [data-reader-books-body],
   body.refugio-reader-focus [data-reader-chapters-body] {

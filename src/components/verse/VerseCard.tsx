@@ -243,7 +243,6 @@ export function VerseCard({ initialFromBuild, initialMood }: Props) {
         isLoading={loading || !urlDone}
         captureId={CAPTURE}
         titleLine={t.title}
-        footerText={t.footer}
         sanctuary={sanctuary}
         actionSlot={
           <VerseActionsMenu

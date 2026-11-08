@@ -14,6 +14,8 @@ type Props = {
   /** URL directa al versículo (incluye ?lang=&ref=). */
   verseUrl: string;
   onClose: () => void;
+  /** Nodo de captura de la imagen; único por panel. */
+  captureId?: string;
 };
 
 /**
@@ -28,6 +30,7 @@ export function VerseMenuSheet({
   verseText,
   verseUrl,
   onClose,
+  captureId,
 }: Props) {
   const {
     t,
@@ -40,7 +43,7 @@ export function VerseMenuSheet({
     onCopyLink,
     onToggleFavorite,
     onShare,
-  } = useVerseMenuActions({ lang, verseRefLabel, verseText, verseUrl, onClose });
+  } = useVerseMenuActions({ lang, verseRefLabel, verseText, verseUrl, onClose, captureId });
 
   const isNature = sanctuary === "nature";
   const itemBorder = isNature

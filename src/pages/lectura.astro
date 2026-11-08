@@ -1,19 +1,24 @@
 ---
 import BaseLayout from "@/components/layout/BaseLayout.astro";
 import CosmicBackground from "@/components/celestial/CosmicBackground";
-import SiteHeader from "@/components/celestial/SiteHeader.astro";
+// Header real desactivado temporalmente en /lectura (móvil y escritorio).
 import StreakBadge from "@/components/celestial/StreakBadge.astro";
+import LanguageBar from "@/components/selectors/LanguageBar.astro";
+import VisualSanctuarySwitcher from "@/components/celestial/VisualSanctuarySwitcher";
 import UrlParamsSync from "@/components/ui/UrlParamsSync.astro";
 import { BibleReader } from "@/components/reader/BibleReader";
 import { parseRef } from "@/lib/domain/refParser";
 import { bookLabel, findCatalogBook } from "@/lib/data/booksCatalog";
-import type { Lang } from "@/lib/domain/types";
+import type { Lang, Mood } from "@/lib/domain/types";
 import { parseLang } from "@/lib/i18n/lang";
 
 // Idioma y ref iniciales: se pasan a la isla para que el primer render del
 // cliente sea idéntico al del servidor (sin hydration mismatch).
 const langParam = Astro.url.searchParams.get("lang");
 const lecturaLang: Lang = parseLang(langParam);
+const ALLOWED_MOODS: Mood[] = ["all", "comfort", "wisdom", "hope", "love", "repentance"];
+const rawMood = Astro.url.searchParams.get("mood");
+const currentMood: Mood = ALLOWED_MOODS.includes(rawMood as Mood) ? (rawMood as Mood) : "all";
 const year = new Date().getFullYear();
 // Vista previa al compartir: si la URL trae ?ref=, el OG nombra el pasaje.
 let lecturaOgTitle: string | undefined;
@@ -49,62 +54,256 @@ const lecturaDescription =
   ogDescription={lecturaOgDescription}
 >
   <CosmicBackground client:idle />
-  <SiteHeader currentLang={lecturaLang} currentMood="all" showMoodBar={false} showReaderLink={false} />
-  <div class="refugio-touch-footer-shell">
-  <main
-    id="main-content"
-    tabindex="-1"
-    class="refugio-touch-footer-main pointer-events-auto relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3 pb-10 pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:px-4 sm:pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-6 md:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:px-8"
-  >
-    <nav aria-label="Breadcrumb" data-reader-chrome class="mt-2 flex justify-start">
-      <ol class="inline-flex items-center gap-1.5 rounded-full border border-gold-500/30 bg-black/35 px-3 py-1.5 text-xs text-gold-300/60 ring-1 ring-inset ring-white/5 backdrop-blur-sm sm:text-[13px]">
-        <li>
-          <a
-            href={`/?lang=${lecturaLang}`}
-            class="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
-          >
-            <i class="fa-solid fa-house text-[0.7rem]" aria-hidden="true"></i>
-            <span class="i18n-es">Inicio</span>
-            <span class="i18n-en hidden" aria-hidden="true">Home</span>
-          </a>
-        </li>
-        <li aria-hidden="true" class="text-gold-500/40">/</li>
-        <li aria-current="page" class="font-medium text-gold-200/80">
-          <span class="i18n-es">Lectura Bíblica</span>
-          <span class="i18n-en hidden" aria-hidden="true">Bible Reading</span>
-        </li>
-      </ol>
-    </nav>
-    <div class="mt-2 flex flex-1 flex-col items-center py-2 sm:py-4">
-      <div class="mb-3" data-reader-chrome>
-        <StreakBadge />
+  {/* Header y footer reales desactivados temporalmente en /lectura. */}
+  <div class="refugio-lectura-viewport refugio-touch-footer-shell">
+    <div class="refugio-lectura-shell pointer-events-auto relative z-10 flex h-full min-h-dvh max-h-dvh w-full flex-col overflow-hidden">
+      {/* Zona 1: header simulado con breadcrumb y racha */}
+      <div id="lectura-header" class="refugio-lectura-header shrink-0 border-b border-gold-500/25 bg-black/25 backdrop-blur-md">
+        <div class="mx-auto grid min-h-[3.5rem] w-full max-w-6xl grid-cols-[1fr_auto] items-center gap-2 px-3 py-2 sm:px-4 md:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" data-reader-chrome class="flex min-w-0 justify-start overflow-x-auto">
+            <ol class="inline-flex items-center gap-1.5 rounded-full border border-gold-500/30 bg-black/35 px-3 py-1.5 text-xs text-gold-300/60 ring-1 ring-inset ring-white/5 backdrop-blur-sm sm:text-[13px]">
+              <li>
+                <a
+                  href={`/?lang=${lecturaLang}`}
+                  class="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
+                >
+                  <i class="fa-solid fa-house text-[0.7rem]" aria-hidden="true"></i>
+                  <span class="i18n-es">Inicio</span>
+                  <span class="i18n-en hidden" aria-hidden="true">Home</span>
+                </a>
+              </li>
+              <li aria-hidden="true" class="text-gold-500/40">/</li>
+              <li aria-current="page" class="font-medium text-gold-200/80">
+                <span class="i18n-es">Lectura Bíblica</span>
+                <span class="i18n-en hidden" aria-hidden="true">Bible Reading</span>
+              </li>
+              {/* El lector inyecta aquí el contexto activo (testamento o libro). */}
+              <li id="reader-header-context" class="inline-flex items-center gap-1.5 empty:hidden"></li>
+            </ol>
+          </nav>
+          {/* Acciones en Desktop: barra en línea */}
+          <div class="hidden sm:flex justify-self-end items-center divide-x divide-gold-500/25">
+            <div class="px-2">
+              <StreakBadge />
+            </div>
+            <div class="px-2">
+              <LanguageBar currentMood={currentMood} />
+            </div>
+            <div class="px-2">
+              <a
+                href={`/favoritos?lang=${lecturaLang}`}
+                class="focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:border-gold-500/60 hover:bg-black/55"
+                aria-label={lecturaLang === "es" ? "Versículos favoritos" : "Favorite verses"}
+                title={lecturaLang === "es" ? "Versículos favoritos" : "Favorite verses"}
+              >
+                <i class="fa-solid fa-heart text-sm text-gold-300/95" aria-hidden="true"></i>
+                <span class="sr-only">
+                  {lecturaLang === "es" ? "Versículos favoritos" : "Favorite verses"}
+                </span>
+              </a>
+            </div>
+            <div class="px-2">
+              <VisualSanctuarySwitcher client:load inline lang={lecturaLang} />
+            </div>
+          </div>
+
+          {/* Acciones en Móviles: Menú hamburguesa / dropdown limpio */}
+          <div class="flex sm:hidden justify-self-end items-center gap-1.5 relative">
+            <div class="scale-90 origin-right">
+              <StreakBadge />
+            </div>
+            <button
+              type="button"
+              id="lectura-mobile-menu-btn"
+              aria-expanded="false"
+              aria-haspopup="true"
+              aria-label={lecturaLang === "es" ? "Abrir menú de opciones" : "Open options menu"}
+              class="focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold-500/45 bg-black/45 text-gold-200 ring-1 ring-inset ring-white/5 backdrop-blur-sm transition hover:bg-black/60"
+            >
+              <i class="fa-solid fa-bars text-sm text-gold-300" aria-hidden="true"></i>
+            </button>
+
+            {/* Dropdown flotante para móvil */}
+            <div
+              id="lectura-mobile-dropdown"
+              class="hidden absolute right-0 top-full mt-2 w-56 rounded-2xl border border-gold-500/35 bg-black/85 p-3 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 z-50 flex flex-col gap-3"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-gold-500/20 text-xs font-semibold text-gold-300">
+                <span>{lecturaLang === "es" ? "Opciones" : "Options"}</span>
+                <button
+                  type="button"
+                  id="lectura-mobile-menu-close"
+                  aria-label={lecturaLang === "es" ? "Cerrar menú" : "Close menu"}
+                  class="text-gold-200/60 hover:text-gold-200 p-1"
+                >
+                  <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              {/* Idioma */}
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-gold-200/70 flex items-center gap-1.5">
+                  <i class="fa-solid fa-language text-xs" aria-hidden="true"></i>
+                  {lecturaLang === "es" ? "Idioma" : "Language"}
+                </span>
+                <LanguageBar currentMood={currentMood} />
+              </div>
+
+              {/* Favoritos */}
+              <a
+                href={`/favoritos?lang=${lecturaLang}`}
+                class="flex items-center justify-between py-1 px-1 rounded-lg hover:bg-white/5 transition text-xs font-medium text-gold-200"
+              >
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-heart text-gold-300" aria-hidden="true"></i>
+                  {lecturaLang === "es" ? "Favoritos" : "Favorites"}
+                </span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-gold-400/60" aria-hidden="true"></i>
+              </a>
+
+              {/* Santuario / Tema */}
+              <div class="flex items-center justify-between pt-1 border-t border-gold-500/15">
+                <span class="text-xs text-gold-200/70 flex items-center gap-1.5">
+                  <i class="fa-solid fa-palette text-xs" aria-hidden="true"></i>
+                  {lecturaLang === "es" ? "Santuario" : "Sanctuary"}
+                </span>
+                <VisualSanctuarySwitcher client:load inline lang={lecturaLang} />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <BibleReader client:load initialLang={lecturaLang} initialRef={refParam} />
-    </div>
-  </main>
-  <footer data-site-footer class="relative z-10 mt-6 w-full border-t border-gold-500/15 sm:mt-8">
-    <span class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-night p-[3px] ring-1 ring-gold-500/30" aria-hidden="true">
-      <img
-        src="/img/logo-refugio-celestial-best.png"
-        alt=""
-        class="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8"
-        loading="lazy"
-      />
-    </span>
-    <div class="mx-auto w-full max-w-3xl px-3 pb-4 pt-5 text-center text-xs text-gold-300/70 sm:px-4 sm:text-sm md:px-6 lg:px-8">
-      <span>© {year} Versículos Bíblicos · </span>
-      <span class="i18n-es">Desarrollado por </span>
-      <span class="i18n-en hidden" aria-hidden="true">Developed by </span>
-      <a
-        href="https://sysjol.onrender.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
+
+      {/* Zona 2: body */}
+      <main
+        id="main-content"
+        tabindex="-1"
+        class="refugio-lectura-main refugio-touch-footer-main refugio-thin-scroll pointer-events-auto relative z-10 flex min-h-0 w-full flex-1 flex-col"
       >
-        SysJoL
-      </a>
+        <div class="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-4 md:px-6 lg:px-8">
+          {/* Título a nivel de página: centrado dentro del container del header. */}
+          <header data-reader-title class="mb-4 w-full shrink-0 text-center">
+            <div class="mx-auto max-w-lg">
+              <h1 class="font-display text-xl font-bold text-gold-200 sm:text-2xl">
+                <span class="i18n-es">Lectura Bíblica</span>
+                <span class="i18n-en hidden" aria-hidden="true">Bible Reading</span>
+              </h1>
+              <p class="mt-0.5 text-xs text-gold-100/60 sm:text-sm">
+                <span class="i18n-es">Explora capítulos y versículos completos</span>
+                <span class="i18n-en hidden" aria-hidden="true">Explore full chapters and verses</span>
+              </p>
+            </div>
+          </header>
+
+          <div class="flex min-h-0 flex-1 flex-col items-center py-2 sm:py-3">
+            <BibleReader
+              client:load
+              initialLang={lecturaLang}
+              initialRef={refParam}
+              showTitle={false}
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Zona 3: footer real */}
+      <footer data-site-footer class="refugio-lectura-footer relative z-10 w-full border-t border-gold-500/15">
+        <span class="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-night p-[3px] ring-1 ring-gold-500/30" aria-hidden="true">
+          <img
+            src="/img/logo-refugio-celestial-best.png"
+            alt=""
+            class="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8"
+            loading="lazy"
+          />
+        </span>
+        <div class="mx-auto w-full max-w-6xl px-3 pb-4 pt-5 text-center text-xs text-gold-300/70 sm:px-4 sm:text-sm md:px-6 lg:px-8">
+          <span>© {year} Versículos Bíblicos · </span>
+          <span class="i18n-es">Desarrollado por </span>
+          <span class="i18n-en hidden" aria-hidden="true">Developed by </span>
+          <a
+            href="https://sysjol.onrender.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="font-semibold text-gold-300 transition hover:text-gold-200 hover:underline"
+          >
+            SysJoL
+          </a>
+        </div>
+      </footer>
     </div>
-  </footer>
   </div>
+  <script is:inline>
+    // Header inteligente en móviles y pantallas con altura reducida (< 650px)
+    (function () {
+      var header = document.getElementById("lectura-header");
+      if (!header) return;
+
+      var lastScrollTop = 0;
+      var threshold = 10;
+
+      function onScroll() {
+        if (window.innerWidth >= 768) {
+          header.classList.remove("header--hidden");
+          return;
+        }
+
+        var currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+
+        if (currentScroll <= 40) {
+          header.classList.remove("header--hidden");
+          lastScrollTop = currentScroll;
+          return;
+        }
+
+        if (Math.abs(currentScroll - lastScrollTop) > threshold) {
+          if (currentScroll > lastScrollTop) {
+            header.classList.add("header--hidden");
+          } else {
+            header.classList.remove("header--hidden");
+          }
+          lastScrollTop = currentScroll;
+        }
+      }
+
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll, { passive: true });
+
+      // Dropdown de opciones en móvil
+      var menuBtn = document.getElementById("lectura-mobile-menu-btn");
+      var menuCloseBtn = document.getElementById("lectura-mobile-menu-close");
+      var dropdown = document.getElementById("lectura-mobile-dropdown");
+
+      function toggleMenu(show) {
+        if (!dropdown || !menuBtn) return;
+        var isOpen = typeof show === "boolean" ? show : dropdown.classList.contains("hidden");
+        if (isOpen) {
+          dropdown.classList.remove("hidden");
+          menuBtn.setAttribute("aria-expanded", "true");
+        } else {
+          dropdown.classList.add("hidden");
+          menuBtn.setAttribute("aria-expanded", "false");
+        }
+      }
+
+      if (menuBtn) {
+        menuBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleMenu();
+        });
+      }
+
+      if (menuCloseBtn) {
+        menuCloseBtn.addEventListener("click", function () {
+          toggleMenu(false);
+        });
+      }
+
+      document.addEventListener("click", function (e) {
+        if (dropdown && !dropdown.contains(e.target) && e.target !== menuBtn) {
+          toggleMenu(false);
+        }
+      });
+    })();
+  </script>
   <UrlParamsSync />
 </BaseLayout>

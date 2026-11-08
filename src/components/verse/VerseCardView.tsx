@@ -95,7 +95,6 @@ type Props = {
   isLoading: boolean;
   captureId: string;
   titleLine: string;
-  footerText: string;
   sanctuary?: "celestial" | "nature";
   /** Móvil: icono de descarga (esquina del card) */
   actionSlot?: ReactNode;
@@ -116,7 +115,6 @@ export function VerseCardView({
   isLoading,
   captureId,
   titleLine,
-  footerText,
   sanctuary = "celestial",
   actionSlot,
   audioSlot,

@@ -31,6 +31,8 @@ type Props = {
   seedKey: string;
   sanctuary?: SanctuaryTheme;
   footerText?: string;
+  /** ID del nodo que se captura; debe ser único si hay varios lectores. */
+  captureId?: string;
 };
 
 export function VerseSquareImage({
@@ -39,6 +41,7 @@ export function VerseSquareImage({
   seedKey,
   sanctuary = "celestial",
   footerText = "Refugio Celestial",
+  captureId = SQUARE_CAPTURE_ID,
 }: Props) {
   const isNature = sanctuary === "nature";
 
@@ -140,7 +143,7 @@ export function VerseSquareImage({
       }}
     >
       <div
-        id={SQUARE_CAPTURE_ID}
+        id={captureId}
         style={{
           width: SQUARE_SIZE,
           height: SQUARE_SIZE,

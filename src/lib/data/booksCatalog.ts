@@ -1,4 +1,4 @@
-import { findBookByName, normalizeBookName, splitRefQuery } from "../domain/refParser";
+import { findBookByName, normalizeBookName, splitRefQuery } from "../domain/refParser.ts";
 
 export interface CatalogBook {
   usfm: string;

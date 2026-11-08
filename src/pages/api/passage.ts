@@ -1,10 +1,6 @@
 import type { APIRoute } from "astro";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/server/rateLimiter";
-import {
-  findBookByName,
-  normalizeBookName,
-  parseRef,
-} from "@/lib/domain/refParser";
+import { findBookByName, parseRef } from "@/lib/domain/refParser";
 import {
   BOOKS,
   findCatalogBook,

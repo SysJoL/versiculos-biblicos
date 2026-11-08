@@ -156,7 +156,6 @@ export function VerseActionsMenu({
 
     const ar = anchor.getBoundingClientRect();
     const pr = panel.getBoundingClientRect();
-    const spaceRight = window.innerWidth - ar.right;
     const spaceLeft = ar.left;
     const spaceBottom = window.innerHeight - ar.bottom;
     const spaceTop = ar.top;

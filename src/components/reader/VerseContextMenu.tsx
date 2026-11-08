@@ -16,6 +16,8 @@ type Props = {
   /** URL directa al versículo (incluye ?lang=&ref=). */
   verseUrl: string;
   onClose: () => void;
+  /** Nodo de captura de la imagen; único por panel. */
+  captureId?: string;
 };
 
 /** Popover del versículo (PC / clic derecho). En móvil se usa VerseMenuSheet. */
@@ -28,6 +30,7 @@ export function VerseContextMenu({
   verseText,
   verseUrl,
   onClose,
+  captureId,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   // Menú no modal: mueve el foco dentro y lo restaura al cerrar, sin confinar Tab.
@@ -43,7 +46,7 @@ export function VerseContextMenu({
     onCopyLink,
     onToggleFavorite,
     onShare,
-  } = useVerseMenuActions({ lang, verseRefLabel, verseText, verseUrl, onClose });
+  } = useVerseMenuActions({ lang, verseRefLabel, verseText, verseUrl, onClose, captureId });
 
   // Cierra con clic fuera, scroll o Escape.
   useEffect(() => {

@@ -12,6 +12,8 @@ type Props = {
   onClear: () => void;
   /** En lectura inmersiva sube por encima de la barra de capítulos. */
   lifted?: boolean;
+  /** Nodo de captura de la imagen; único por panel. */
+  captureId?: string;
 };
 
 /**
@@ -28,6 +30,7 @@ export function MobileVerseQuickBar({
   onMore,
   onClear,
   lifted = false,
+  captureId,
 }: Props) {
   const noop = () => {};
   const { busy, isFav, onExport, onToggleFavorite, onShare } = useVerseMenuActions({
@@ -36,6 +39,7 @@ export function MobileVerseQuickBar({
     verseText,
     verseUrl,
     onClose: noop,
+    captureId,
   });
 
   const isNature = sanctuary === "nature";
